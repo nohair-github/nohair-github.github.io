@@ -1,5 +1,4 @@
-nohair.net oh github
-(# nohair-github.github.io)
+nohair.net on github (# nohair-github.github.io)
 
 Main repository
 
