@@ -1,0 +1,117 @@
+<html lang="en">
+
+<head>
+
+  <!-- Basic Page Needs -->
+  <meta charset="utf-8">
+  <title>No Hair Blog: USB-Serial Adapters for Macbook</title>
+  <meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+  <meta name="generator" content="GSB">
+  <meta name="description" content="Various items of interest to the authors">
+  <meta name="author" content="Our writers and correspondents">
+
+  <!-- Mobile Specific Metas -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- FONT -->
+  <link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="./normalize.css">
+  <link rel="stylesheet" href="./skeleton.css">
+
+  <!-- Favicon -->
+  <link href="data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQEAYAAABPYyMiAAAABmJLR0T\
+8JWPfcAAAACXBIWXMAAABIAAAASABGyWs+AAACNElEQVRIx41VzUs6QRh+XH4SifRBL\
+CEIshBqLdFeIrwIfVqnoq5eApOK+kO6dimo6NC96GgSSlDSIUo7ZItkQunW0gdlBRn0\
+O8Q0Mds0+1yGeb+e931n5h0HBBgcjEQikc9PkR0PyWQikUg4HDw9V0GIY7F4fGaGyg8\
+P8mTEz5hW5vPp2nA1tbGxtKSOBHJLnEqdXCQTosrvrgoFHQdmJiYm5udFXdSYg14xB8\
+f7+9OpziBx8e7O9MECoWjoNzYGBgbCwa5SciiQKyxE9PhvHywl9ZNDZ6vQ0N1kS4CVx\
+e3t4+P9OzlmWPx+sVV86Drudyx8d8T9WYJo3N5UKAHzVvba2uLiwQPWrq5ubqRSwt7e\
+zs71N5eHw0NDoKBCLjY39lJ5NDoH4jCvoAMH9fblsGHRfX9c7HZbCQiInNjx4thOgCA\
+Q6OgIBIC3t4eHalXccmJHESwHIGq+v2KApyeOp2vr8DISFf8DCwvLyysr7OD6Sqmtbd\
+TffT01NTk5P0LqmqoigKkM1mMj9vgcD+zw6O8PhUIga9vQEg5oGnJ3l87oO+HxfAQlK\
+pWKxWATa24NBv58Sk9dRKul6LkftyWCSWMH32Ui1mstFV3YCulx1dbNhWQynd7fp35N\
+TS0tsmwlFt6BbDaT2d2leadk06Qyu3GYSH8C8i+qysU6u8H3O652G1Wqv9Rmz7L+A5y\
+HJrq8cDXF0Zhmla7a+vK5Vy2T6xsAOijoggIib4DwP6V6vAI3f4AAAAAElFTkSuQmCC=="
+rel="icon" type="image/x-icon" />
+
+  <!--  Scripts -->
+  
+</head>
+
+
+<body>
+
+  <!-- Primary Page Layout -->
+  <div class="container">
+  
+    <!-- Header -->
+    <div class="row">
+		
+      <div class="twelve columns" style="margin-top: 4%; text-align: center;">
+        You are here: <a href="./index.html">Home</a> > <a href="./blog.html">Blog</a> > <a href="./entries.html">Entries</a> > <a href="./usb-serial.html">USB-Serial Adapters for Macbook</a></br>
+      </div class="twelve columns">
+      
+      <div class="twelve columns" style="margin-top: 3%; text-align: center; background: url('./images/sunset_2018.jpg') no-repeat center;">
+	  <img src="./spacer.gif" height="30px"></br>
+	  <h4><b>No Hair Blog</b></h4>
+	  </div class="twelve columns">
+
+ 	</div class ="row">
+
+	<!-- Posts -->
+	<div class="row">
+	
+	  <div class="twelve columns" style="margin-top: 3%; text-align: center;">
+		<h5><b>USB-Serial Adapters for Macbook</b></h5>
+	  </div class="twelve columns">
+
+	  <div class="twelve columns" style="margin-top: 3%; text-align: left;">
+		
+<p>I use a variety of devices which are easily managed using a built in serial interface, including Juniper/Netscreen switches and firewalls, Soekris computers, PC Engines computers, and so on. My working computers are a Macbook 2,1 running OS X 10.6.8 which dual boots into OpenBSD, a newer Macbook Air 7,2 running OS X 10.15, and a Dell Vostro running OpenBSD. I have tried a number of USB-serial adapters; in the recent past, I was using a Keyspan (which has a Prolific chip) which required installation of drivers. Now, I have settled on a Startech ICUSB2321F (which uses a FTDI chip). This is the best of many as it works out of the box without requiring drivers or additional software.</p>
+
+<p>For the Dell or the Macbook 2,1, both running OpenBSD, simply plug it in and, in your shell,</p>
+
+<pre><code>cu -l cuaU0 -s 19200</code></pre>
+
+<p>or whatever speed is the appliance default.</p>
+
+<p>I you boot into OS X 10.6.8, open Terminal and the command is</p>
+
+<pre><code>cu -l ttyu0 -s 115200</code></pre>
+
+<p>For 10.15, it's a bit different. The command is</p>
+
+<pre><code>cu -l /dev/cu.usbserial-###### -s 115200</code></pre>
+
+<p>where ###### is the serial number of the device. The device is easily found by</p>
+
+<pre><code>ls /dev | grep cu</code></pre>
+
+<p>Super easy and works a treat.</p>
+
+<p></br></p>
+
+<p>Posted by Gordon, No Hair Blog, May 30, 2020</p>
+
+<p>&copy; nohair.net and the author</p>
+
+	  </div class="twelve columns">
+    
+	</div class="row">
+
+	<!-- Footer --> 
+	<div class="row">
+      <div class="twelve columns" style="text-align: center;">
+		<p>For comments, corrections, and addenda, email: gordon[AT]nohair.net</p>
+		<p><a href="./blog.html">Blog</a> | <a href="./entries.html">Entries</a> | <a href="./tags.html">Tags</a> | <a href="./index.html">Home</a></p></br>
+	  </div class="twelve columns">
+	</div class="row">
+    
+  </div class="container">
+
+<!-- End Document -->
+
+</body>
+</html>
