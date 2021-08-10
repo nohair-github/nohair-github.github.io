@@ -1,0 +1,108 @@
+Setting up a mailserver on OpenBSD 6.9p10.
+
+The goal is to have a hosted mail server for my domain accessible to hosts both inside and outside the local network which use MacOS, Linux, and OpenBSD. Alhough mail is in the base install and can suffice to read local system mail on an OpenBSD workstation, it cannot access mail from a remote mail server. For this, use Thunderbird. Mutt, lynx, getmail/fetchmail, etc.
+
+Prior to doing this you need:
+° A static IP is mandatory as is 24/7 uptime. I recommend you spin up a cheap VPS.
+° Check that port 25 is not blocked by your ISP or hosting provider. File a ticket to get that opened.
+° Check that your IP address has not been blacklisted because of prior activity
+° Check that you can edit the reverse DNS records or that your ISP will.
+
+A. DNS
+1. First, set up DNS for the mail server at your DNS provider
+
+	A Record:
+		<pre><code>smtp.example.com  A  1.2.3.4</code></pre>
+	MX Records:
+		<pre><code>example.com   MX   1   smtp.example.com.
+		@             MX   2   smtp.example.com.</code></pre>
+
+2. TXT Records:
+		<pre><code>example.com. IN TXT "v=spf1 a ip4:1.2.3.4 mx ~all"</code></pre>
+
+3. SPF Records:
+4. DMARC:
+5. Reverse DNS (rDNS), and PTR records:
+6. Test if DNS resolution is working.
+
+B. Get Let's Encrypt certificates without setting up a web server on our mailhost
+1. Install certbot (has built in http server)
+
+<pre><code>smtp$ doas pkg_add certbot
+quirks-3.633 signed on 2021-08-02T12:40:37Z
+certbot-1.13.0:sqlite3-3.34.1: ok
+certbot-1.13.0:libffi-3.3: ok
+certbot-1.13.0:xz-5.2.5: ok
+certbot-1.13.0:python-3.8.11: ok
+certbot-1.13.0:py3-setuptools-44.1.1v0: ok
+certbot-1.13.0:py3-six-1.15.0: ok
+certbot-1.13.0:py3-configobj-5.0.6p3: ok
+certbot-1.13.0:py3-parsedatetime-2.5p1: ok
+certbot-1.13.0:py3-zopeinterface-4.4.3p3: ok
+certbot-1.13.0:py3-zopeevent-4.3.0p2: ok
+certbot-1.13.0:py3-zopecomponent-4.2.2p5: ok
+certbot-1.13.0:py3-tz-2021.1: ok
+certbot-1.13.0:py3-pyRFC3339-1.0p3: ok
+certbot-1.13.0:py3-chardet-4.0.0: ok
+certbot-1.13.0:py3-urllib3-1.26.4: ok
+certbot-1.13.0:py3-certifi-2020.4.5.1p0: ok
+certbot-1.13.0:py3-idna-2.10: ok
+certbot-1.13.0:py3-requests-2.25.1: ok
+certbot-1.13.0:py3-cparser-2.19p1: ok
+certbot-1.13.0:py3-cffi-1.13.2p1: ok
+certbot-1.13.0:py3-asn1crypto-0.24.0p1: ok
+certbot-1.13.0:py3-cryptography-3.3.2p0: ok
+certbot-1.13.0:py3-openssl-20.0.1p0: ok
+certbot-1.13.0:py3-asn1-0.4.8p0v0: ok
+certbot-1.13.0:py3-werkzeug-0.12.1p6: ok
+certbot-1.13.0:py3-ndg-httpsclient-0.5.1p0: ok
+certbot-1.13.0:py3-requests-toolbelt-0.9.1: ok
+certbot-1.13.0:py3-acme-1.13.0: ok
+certbot-1.13.0:py3-josepy-1.8.0: ok
+certbot-1.13.0:py3-distro-1.5.0: ok
+certbot-1.13.0:py3-ConfigArgParse-1.2.3p0: ok
+certbot-1.13.0: ok</code></pre>
+
+2. Now generate certificates:
+<pre><code>doas certbot certonly --manual --preferred-challenges dns -d smtp.example.com</code></pre>
+
+<pre><code>smtp$ doas certbot certonly --manual --preferred-challenges dns -d smtp.example.com     
+Saving debug log to /var/log/letsencrypt/letsencrypt.log
+Plugins selected: Authenticator manual, Installer None
+Requesting a certificate for smtp.example.com
+Performing the following challenges:
+dns-01 challenge for smtp.example.com
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Please deploy a DNS TXT record under the name
+_acme-challenge.smtp.example.com with the following value:
+
+1x0JcJxs0melongalphanumstring
+Before continuing, verify the record is deployed.</code></pre>
+
+3. Now add this record to your DNS records of your DNS provider:
+<pre><code>_acme-challenge.smtp.example.com IN TXT 3600  1x0JcJxs0melongalphanumstring</code></pre>
+
+4. Now wait a bit for the record to propagate, (good time for a cold adult beverage) then hit return.
+
+<pre><code>Waiting for verification...
+Cleaning up challenges
+Subscribe to the EFF mailing list (email: you@myemail.com).
+
+IMPORTANT NOTES:
+ - Congratulations! Your certificate and chain have been saved at:
+   /etc/letsencrypt/live/smtp.example.com/fullchain.pem
+   Your key file has been saved at:
+   /etc/letsencrypt/live/smtp.example.com/privkey.pem
+   Your certificate will expire on 2021-11-06. To obtain a new or
+   tweaked version of this certificate in the future, simply run
+   certbot again. To non-interactively renew *all* of your
+   certificates, run "certbot renew"
+ - If you like Certbot, please consider supporting our work by:
+
+   Donating to ISRG / Let's Encrypt:   https://letsencrypt.org/donate
+   Donating to EFF:                    https://eff.org/donate-le</code></pre>
+
+5. The certificates expire after 90 days. To renew, see cron job below.
+
+[Continue reading for Part 2]
