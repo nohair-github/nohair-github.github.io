@@ -4,7 +4,7 @@
 
   <!-- Basic Page Needs -->
   <meta charset="utf-8">
-  <title>No Hair Blog: USB-Serial Adapters for Macbook</title>
+  <title>No Hair Github Pages: Use USB-Serial Adapter on Macbook</title>
   <meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
   <meta name="generator" content="GSB">
   <meta name="description" content="Various items of interest to the authors">
@@ -50,12 +50,12 @@ rel="icon" type="image/x-icon" />
     <div class="row">
 		
       <div class="twelve columns" style="margin-top: 4%; text-align: center;">
-        You are here: <a href="./index.html">Home</a> > <a href="./blog.html">Blog</a> > <a href="./entries.html">Entries</a> > <a href="./usb-serial.html">USB-Serial Adapters for Macbook</a></br>
+        You are here: <a href="./index.html">Home</a> > <a href="./usb-serial.html">USB-Serial Adapters for Macbook</a></br>
       </div class="twelve columns">
       
-      <div class="twelve columns" style="margin-top: 3%; text-align: center; background: url('./images/sunset_2018.jpg') no-repeat center;">
+      <div class="twelve columns" style="margin-top: 3%; text-align: center;">
 	  <img src="./spacer.gif" height="30px"></br>
-	  <h4><b>No Hair Blog</b></h4>
+	  <h4><b>No Hair Github Pages</b></h4>
 	  </div class="twelve columns">
 
  	</div class ="row">
@@ -69,27 +69,24 @@ rel="icon" type="image/x-icon" />
 
 	  <div class="twelve columns" style="margin-top: 3%; text-align: left;">
 		
-<p>I use a variety of devices which are easily managed using a built in serial interface, including Juniper/Netscreen switches and firewalls, Soekris computers, PC Engines computers, and so on. My working computers are a Macbook 2,1 running OS X 10.6.8 which dual boots into OpenBSD, a newer Macbook Air 7,2 running OS X 10.15, and a Dell Vostro running OpenBSD. I have tried a number of USB-serial adapters; in the recent past, I was using a Keyspan (which has a Prolific chip) which required installation of drivers. Now, I have settled on a Startech ICUSB2321F (which uses a FTDI chip). This is the best of many as it works out of the box without requiring drivers or additional software.</p>
+<p>I have settled on a Startech ICUSB2321F (which uses a FTDI chip).
 
-<p>For the Dell or the Macbook 2,1, both running OpenBSD, simply plug it in and, in your shell,</p>
+<p>For soekris net5501:</p>
 
+</p>Dell running OpenBSD:</p>		  
 <pre><code>cu -l cuaU0 -s 19200</code></pre>
 
-<p>or whatever speed is the appliance default.</p>
+<p>For PC Engines apu:</p>
 
-<p>I you boot into OS X 10.6.8, open Terminal and the command is</p>
-
+<p>MacOSX 10.6.8:</p>
 <pre><code>cu -l ttyu0 -s 115200</code></pre>
 
-<p>For 10.15, it's a bit different. The command is</p>
-
+<p>Mac OS 10.15,= and 11:</p>
 <pre><code>cu -l /dev/cu.usbserial-###### -s 115200</code></pre>
 
 <p>where ###### is the serial number of the device. The device is easily found by</p>
 
 <pre><code>ls /dev | grep cu</code></pre>
-
-<p>Super easy and works a treat.</p>
 
 <p></br></p>
 
