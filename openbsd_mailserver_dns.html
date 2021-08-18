@@ -96,8 +96,8 @@ rel="icon" type="image/x-icon" />
 <pre><code>4.3.2.1.in-addr.arpa. 7200 IN PTR mail.example.com.</code></pre>
 
 <p>Forward-confirmed DNS requires that an A record references the name and IP and a PT record references the same IP and name, like so:</p>
-<pre><code>	smtp				   3600 IN A  1.2.3.4
-4.3.2.1.in-addr.arpa. 7200 IN PTR mail.example.com.</code></pre>
+<pre><code>smtp	   3600  IN  A   1.2.3.4
+4.3.2.1.in-addr.arpa.	7200  IN  PTR   mail.example.com.</code></pre>
 
 <p>5. Test if DNS resolution is working. You can use https://mxtoolbox.com/ to check all your DNS records for confirmation.</p>
 
