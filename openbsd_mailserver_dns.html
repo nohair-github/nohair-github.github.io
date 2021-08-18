@@ -74,18 +74,19 @@ rel="icon" type="image/x-icon" />
 		
 <pA. DNS</p>
 
-<p>1. First, set up DNS for the mail server at your DNS provider
+<p>1. First, set up DNS for the mail server at your DNS provider</p>
 
-	A Record:
-		<pre><code>smtp.example.com  A  1.2.3.4</code></pre>
-	MX Records:
-		<pre><code>example.com   MX   1   smtp.example.com.
-		@             MX   2   smtp.example.com.</code></pre></p>
+<p>A Record:</p>
+<pre><code>smtp.example.com  A  1.2.3.4</code></pre>
 
-<p>2. SPF Records:
-		<pre><code>example.com. IN TXT "v=spf1 a ip4:1.2.3.4 mx ~all"</code></pre></p>
+<p>MX Records:</p>
+<pre><code>example.com   MX   1   smtp.example.com.
+@             MX   2   smtp.example.com.</code></pre>
 
-<p>3. DKIM and DMARC Records: See <a href="./openbsd_mailserver_dkim.html">following section</a>.
+<p>2. SPF Records:</p>
+<pre><code>example.com. IN TXT "v=spf1 a ip4:1.2.3.4 mx ~all"</code></pre>
+
+<p>3. DKIM and DMARC Records: See <a href="./openbsd_mailserver_dkim.html">following section</a>.</p>
 
 <p>4. Reverse DNS (rDNS), forward-confirmed reverse DNS (FCrDNS), and PTR records:</p>
 
