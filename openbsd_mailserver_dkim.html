@@ -123,11 +123,11 @@ $ doas chown -R _smtpd:_dovecot /etc/mail/dkim/</code></pre>
 domain {
 	example.com {
 		path = "/ect/mail/dkim/private.key";
-		selector = "<anyalhpanumstring>";
+		selector = "anyalhpanumstring";
 	}
 }</code</pre>
 
-<p>where 'anyalphanumstring' it the same selector you used in the DKIM TXT DNS record. We'll get back to this below.</p>
+<p>where "anyalphanumstring" it the same selector you used in the DKIM TXT DNS record. We'll get back to this below.</p>
 
 <p>2. DMARC</p>
 
@@ -135,7 +135,7 @@ domain {
 
 <pre><code>_dmarc.example.com. TXT "v=DMARC1; p=reject; sp=reject; pct=100; aspf=s; adkim=s; fo=1; ruf=mailto:<admin>"</code></pre>
 
-<p>where <admin> is the email address of the mail server adminstrator/postmaster, like postmaster@example.com. It does not have to be on the mail server we are building here.</p>
+<p>where &lt;admin&gt; is the email address of the mail server adminstrator/postmaster, like postmaster@example.com. It does not have to be on the mail server we are building here.</p>
 
 <p>3. Testing DKIM and DMARC</p>
 
