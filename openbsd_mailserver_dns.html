@@ -4,7 +4,7 @@
 
   <!-- Basic Page Needs -->
   <meta charset="utf-8">
-  <title>No Hair Github Pages: OpenBSD mail server - DNS </title>
+  <title>No Hair Github Pages: OpenBSD Mail Server Notes - DNS </title>
   <meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
   <meta name="generator" content="GSB">
   <meta name="description" content="Various items of interest to the authors">
@@ -72,7 +72,7 @@ rel="icon" type="image/x-icon" />
 
 	  <div class="twelve columns" style="margin-top: 3%; text-align: left;">
 		
-<pA. DNS</p>
+<p>A. DNS</p>
 
 <p>1. First, set up DNS for the mail server at your DNS provider</p>
 
@@ -88,7 +88,9 @@ rel="icon" type="image/x-icon" />
 
 <p>3. DKIM and DMARC Records: See <a href="./openbsd_mailserver_dkim.html">following section</a>.</p>
 
-<p>4. Reverse DNS (rDNS), forward-confirmed reverse DNS (FCrDNS), and PTR records:</p>
+<p>4. CAA Records: See Certificates sevtion following</p>
+
+<p>5. Reverse DNS (rDNS), forward-confirmed reverse DNS (FCrDNS), and PTR records:</p>
 
 <p>If you have static IP at home or business, you probably need to contact your ISP to have them set up reverse DNS. If you have a VPS or shared hosting, usually you can create PTR records in the administration panel or request it from your hosting company. If you have your own DNS servers, you probably already have your own mail server.</p>
 	
@@ -99,8 +101,14 @@ rel="icon" type="image/x-icon" />
 <pre><code>smtp	   3600  IN  A   1.2.3.4
 4.3.2.1.in-addr.arpa.	7200  IN  PTR   mail.example.com.</code></pre>
 
-<p>5. Test if DNS resolution is working. You can use https://mxtoolbox.com/ to check all your DNS records for confirmation.</p>
+<p>6. Test if DNS resolution is working. You can use https://mxtoolbox.com/ to check all your DNS records for confirmation.</p>
 
+<p> Also, you can use <a href="https://multirbl.valli.org/">https://multirbl.valli.org/</a> tp check rDNS AND FCDNS.</p<
+
+<p>For additional reading:</p>
+
+<ul><ii><a href="https://wiki.ircnow.org/index.php?n=DNS.Mail">IRCnow DNS for mail</a>
+<li><a href="https://manuals.gfi.com/en/kerio/connect/content/server-configuration/mail-delivery-and-dns-records/essential-dns-records-for-mail-delivery-and-spam-protection-1223.html">GFI.com mail delivery and dns</a></ul>
 <p></p>
 
 <p>Next: <a href="./openbsd_mailserver_dkim">Set up DKIM and DKMARC</a></p>

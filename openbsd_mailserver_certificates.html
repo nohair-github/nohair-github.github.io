@@ -4,7 +4,7 @@
 
   <!-- Basic Page Needs -->
   <meta charset="utf-8">
-  <title>No Hair Github Pages: OpenBSD Mail Server Notes - Sources </title>
+  <title>No Hair Github Pages: OpenBSD Mail Server Notes - TLS certificates</title>
   <meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
   <meta name="generator" content="GSB">
   <meta name="description" content="Various items of interest to the authors">
@@ -51,7 +51,7 @@ rel="icon" type="image/x-icon" />
     <div class="row">
 		
       <div class="twelve columns" style="margin-top: 4%; text-align: center;">
-        You are here: <a href="./index.html">Home</a>  > <a href="./openbsd_mailserver_sources.html">OpenBSD mail server - Sources</a></br>
+        You are here: <a href="./index.html">Home</a>  > <a href="./openbsd_mailserver_certificates.html">OpenBSD mail server, Part2 : DNS</a></br>
       </div class="twelve columns">
       
       <div class="twelve columns" style="margin-top: 3%; text-align: center;">
@@ -67,32 +67,68 @@ rel="icon" type="image/x-icon" />
 	<div class="row">
 	
 	  <div class="twelve columns" style="margin-top: 3%; text-align: center;">
-		<h5><b>Setting up a mailserver on OpenBSD 6.9p10: Online Sources</b></h5>
+		<h5><b>OpenBSD mail server, Part 3: DNS</b></h5>
 	  </div class="twelve columns">
 
 	  <div class="twelve columns" style="margin-top: 3%; text-align: left;">
 		
-<p>Other instructions on the web for reference:</p>
-<ul>
-<li><a href="https://poolp.org/posts/2019-09-14/setting-up-a-mail-server-with-opensmtpd-dovecot-and-rspamd/">https://poolp.org/posts/2019-09-14/setting-up-a-mail-server-with-opensmtpd-dovecot-and-rspamd/</a>
-<li><a href="https://wiki.ircnow.org/index.php?n=Opensmtpd.Configure?from=Openbsd.Opensmtpd#toc-7">https://wiki.ircnow.org/index.php?n=Opensmtpd.Configure?from=Openbsd.Opensmtpd#toc-7</a>
-<li><a href="https://wiki.ircnow.org/index.php?n=Dovecot.Install">https://wiki.ircnow.org/index.php?n=Dovecot.Install</a>
-<li><a href="https://karchnu.fr/posts/2020-09-17-certificate-smtp-imap-antispam.html">https://karchnu.fr/posts/2020-09-17-certificate-smtp-imap-antispam.html</a>
-<li><a href="https://upcloud.com/community/tutorials/secure-postfix-using-lets-encrypt/">https://upcloud.com/community/tutorials/secure-postfix-using-lets-encrypt/</a> 
-<li><a href="https://prefetch.eu/blog/2020/email-server/#preparation">https://prefetch.eu/blog/2020/email-server/#preparation</a>
-<li><a href="https://robpickering.com/using-lets-encrypt-tls-certificates-for-smtp-imap-and-http/">https://robpickering.com/using-lets-encrypt-tls-certificates-for-smtp-imap-and-http/</a>
-<li><a href="https://www.vultr.com/docs/an-openbsd-e-mail-server-using-opensmtpd-dovecot-rspamd-and-rainloop>https://www.vultr.com/docs/an-openbsd-e-mail-server-using-opensmtpd-dovecot-rspamd-and-rainloop</a>
-<li><a href="https://codedharma.com/posts/openbsd_email_1/">https://codedharma.com/posts/openbsd_email_1/</a>
-<li><a href="https://dev.to/nabbisen/series/1265">https://dev.to/nabbisen/series/1265</a>
-</ul>
+<p>C. Get Let's Encrypt certificates</p>
 
-<p>And, there are a bunch of others.</p>
+<p>You can do this with certbot, but I found setting up renewals easier using the http client. In my case, I had already set up a placeholder webserver on the host that serves a static landing/ID page.  That's not necessary as you can set up a web server on the mailhost that only handles the acme challenge and redirects all other requests. One note: smtpd does not support SAN certificates or SNI, so the certificate requested must be for the hostname of the mail server.</p>
 
-<p>Let's <a href="./openbsd_mailserver_intro.html">move on to prerequisites</a>.</p>
+<p>1. Configure httpd:</p>
+
+<pre><code>server "mail.example.com" {
+        listen on $ext_addr port $ext_HTTP_port
+
+        location "/.well-known/acme-challenge/*" {
+                root "/acme"
+                request strip 2
+        }
+        
+        location * {
+                block return 302 "https://$HTTP_HOST$REQUEST_URI"
+        }
+}</code></ore>
+
+<p>That's it. Now check configuration (httpd -n) and start your httpd.</p>
+
+<p>2. Configure acme-client: Add a stanza to acme-client.conf:</p>
+
+<pre><code>domain mail.example.com {
+        domain key "/etc/ssl/private/mail.example.com.key"
+        domain certificate "/etc/ssl/mail.example.com.crt"
+        domain full chain certificate "/etc/ssl/mail.example.com.fullchain.pem"
+        sign with letsencrypt
+}</code></pre>
+
+<p>3. Now generate certificates:</p>
+
+<pre><code>doas acme-client -v mail.example.com</code></pre>
+
+<p>Check if the new certificates are in /etc/ssl and keys in /etc/ssl/private.</p>
+
+<p>3. Add to smtpd.conf: see below</p>
+
+<p>4. set up cron job to renew:</p>
+
+<pre><code>doas crontab -e -u root</code></pre>
+
+<p>Add:</p>
+
+<pre><code>30	0	*	*	*	acme-client mail.example.com</code></pre>
+
+<p>5. Add CCA records to your DNS records.</p>
+
+<pre><code>mail.example.com.  CAA 0 issue "letsencrypt.org"</code></pre>
+
+<p>Sources:</p>
+<p>https://www.romanzolotarev.com/openbsd/acme-client.html</p>
+<p>https://www.bsdhowto.ch/webserver.html</p>
 
 <p></br></p>
 
-<p>Posted by Gordon, No Hair Github Pages, Aug 11, 2021</p>
+<p>Posted by Gordon, No Hair Github Pages, August 12, 2021</p>
 
 <p>&copy; nohair.net and the author</p>
 
