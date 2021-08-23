@@ -116,7 +116,7 @@ $ doas chown -R _smtpd:_dovecot /etc/mail/dkim/</code></pre>
 
 <p>You may read about _adsp. dkim records, but this has been deprecated. You can leave these off.</p>
 
-<p>You can sign the outgoing emails with dkim-proxy (in ports) or with rspam (since v 1.5). We will use rspam. When you set it up, you need to add a stanza to get the emails signed:</p>
+<p>You can sign the outgoing emails with dkim-proxy (in ports) or with rspamd (since v 1.5). We will use rspamd. When you set it up, you need to add a stanza to get the emails signed:</p>
 
 <pre><code>allow_username_mismatch = true;
 
@@ -125,7 +125,8 @@ domain {
 		path = "/ect/mail/dkim/private.key";
 		selector = "anyalhpanumstring";
 	}
-}</code</pre>
+}
+</code</pre>
 
 <p>where "anyalphanumstring" it the same selector you used in the DKIM TXT DNS record. We'll get back to this below.</p>
 
