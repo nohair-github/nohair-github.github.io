@@ -106,9 +106,11 @@ $ doas chown -R _smtpd:_dovecot /etc/mail/dkim/</core></pre>
 
 <pre><code>anyalphanumstring._domainkey   86400   IN      TXT     "k=rsa; t=s; p=<public key>"</code></pre>
 
-<p>anyalphanumstring can be anything; I usually use the date of the key generation so I can see if a new one has been added. _domainkey is the actual word; this does not refer to your domain's name. &lt;public key&gt; is the actual key value, stripped of the first and last line. You can generate this with:</p>
+<p>"anyalphanumstring" can be anything; I usually use the date of the key generation so I can track if a new one has been added. _domainkey is the actual word; this does not refer to your domain's name.</p>
 
-<pre><code>doas cat /etc/mail/dkim/public.key | awk '/-----/{if (NR!=1)print "";next}{printf $0}' -</code><pre>
+<p>&lt;public key&gt; is the actual key value, stripped of the first and last line. You can generate this with:</p>
+
+<pre><code>doas cat /etc/mail/dkim/public.key | awk '/-----/{if (NR!=1)print "";next}{printf $0}' -</code></pre>
 
 <p>or use you favorite editor.</p>
 
