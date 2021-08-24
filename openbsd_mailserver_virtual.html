@@ -1,0 +1,195 @@
+<html lang="en">
+
+<head>
+
+  <!-- Basic Page Needs -->
+  <meta charset="utf-8">
+  <title>No Hair Github Pages: OpenBSD Mail Server Notes - Virtual Users</title>
+  <meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+  <meta name="generator" content="GSB">
+  <meta name="description" content="Various items of interest to the authors">
+  <meta name="author" content="Our writers and correspondents">
+
+  <!-- Mobile Specific Metas -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- FONT -->
+  <link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="./normalize.css">
+  <link rel="stylesheet" href="./skeleton.css">
+
+  <!-- Favicon -->
+  <link href="data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQEAYAAABPYyMiAAAABmJLR0T\
+8JWPfcAAAACXBIWXMAAABIAAAASABGyWs+AAACNElEQVRIx41VzUs6QRh+XH4SifRBL\
+CEIshBqLdFeIrwIfVqnoq5eApOK+kO6dimo6NC96GgSSlDSIUo7ZItkQunW0gdlBRn0\
+O8Q0Mds0+1yGeb+e931n5h0HBBgcjEQikc9PkR0PyWQikUg4HDw9V0GIY7F4fGaGyg8\
+P8mTEz5hW5vPp2nA1tbGxtKSOBHJLnEqdXCQTosrvrgoFHQdmJiYm5udFXdSYg14xB8\
+f7+9OpziBx8e7O9MECoWjoNzYGBgbCwa5SciiQKyxE9PhvHywl9ZNDZ6vQ0N1kS4CVx\
+e3t4+P9OzlmWPx+sVV86Drudyx8d8T9WYJo3N5UKAHzVvba2uLiwQPWrq5ubqRSwt7e\
+zs71N5eHw0NDoKBCLjY39lJ5NDoH4jCvoAMH9fblsGHRfX9c7HZbCQiInNjx4thOgCA\
+Q6OgIBIC3t4eHalXccmJHESwHIGq+v2KApyeOp2vr8DISFf8DCwvLyysr7OD6Sqmtbd\
+TffT01NTk5P0LqmqoigKkM1mMj9vgcD+zw6O8PhUIga9vQEg5oGnJ3l87oO+HxfAQlK\
+pWKxWATa24NBv58Sk9dRKul6LkftyWCSWMH32Ui1mstFV3YCulx1dbNhWQynd7fp35N\
+TS0tsmwlFt6BbDaT2d2leadk06Qyu3GYSH8C8i+qysU6u8H3O652G1Wqv9Rmz7L+A5y\
+HJrq8cDXF0Zhmla7a+vK5Vy2T6xsAOijoggIib4DwP6V6vAI3f4AAAAAElFTkSuQmCC=="
+rel="icon" type="image/x-icon" />
+
+  <!--  Scripts -->
+  
+</head>
+
+
+<body>
+
+<!-- Primary Page Layout -->
+  
+<div class="container">
+  
+ <!-- Header -->
+    <div class="row">
+		
+      <div class="twelve columns" style="margin-top: 4%; text-align: center;">
+        You are here: <a href="./index.html">Home</a>  > <a href="./openbsd_mailserver_virtual.html">OpenBSD mail server, Part 4: Virtual users</a></br>
+      </div class="twelve columns">
+      
+      <div class="twelve columns" style="margin-top: 3%; text-align: center;">
+	  <img src="./spacer.gif" height="30px"></br>
+	  <h4><b>No Hair Github Pages</b></h4>
+	  </div class="twelve columns">
+
+ 	</div class ="row">
+
+ <!-- End Header -->
+
+ <!-- Post body -->
+	<div class="row">
+	
+	  <div class="twelve columns" style="margin-top: 3%; text-align: center;">
+		<h5><b>OpenBSD mail server, Part 4: Virtual users</b></h5>
+	  </div class="twelve columns">
+
+	  <div class="twelve columns" style="margin-top: 3%; text-align: left;">
+		
+<p>D. Set up virtual users: To prevent having to have every mail user have an actual account on the mail host, we'll use virtual users. Dovecot can use a variety of data sources for the virtual users including a simple list, flat file, redis, or a database like sqlite or mysql. Since I expect less than 20 users at max, a static list will be used, for now.</p>
+
+<p>1. Create vmail user:</p>
+
+<pre><code>doas useradd -c "Virtual Users Mail Account" -d /var/vmail -s /sbin/nologin -u 2000 -g =uid \
+	-L staff vmail</code</pre>
+
+<p>2. Create the necessary users, directories, and files:</p>
+
+<pre><code>doas touch /etc/mail/credentials
+doas chmod 0440 /etc/mail/credentials
+doas chown _smtpd:_dovecot /etc/mail/credentials
+doas useradd -c "Virtual Mail Account" -d /var/vmail -s /sbin/nologin -u 2000 -g =uid -L staff vmail</code></pre>
+
+<p>(You will get "useradd: Warning: home directory `/var/vmail' doesn't exist, and -m was not specified." That's fine.)</p>
+	
+<pre><code>doas mkdir /var/vmail
+doas chown vmail:vmail /var/vmail</code></pre>
+
+<p>3. Populate the /etc/mail/credentials file. Each line in the file has a particular format:</p>
+
+<pre><code>john@example.com:$2b$10$_PSWD_STRING_C3JbO4Ns2jJNZQ:vmail:2000:2000:/var/vmail/example.com/john::userdb_mail=maildir:/var/vmail/example.com/john</code></pre>
+
+<p>or</p>
+
+<pre><code>username@domain.tld:<password>:vmail_uid:vmail_gid:<location of maildir>::<user_db specification></code></pre>
+
+<p>4. You could write a simple script to generate the lines in /etc/mail/credentials:</p>
+
+<pre><code>#!/bin/sh
+# vmail_credential_gen.sh 8/1/21 gb
+
+# Echo script id
+echo "Credential generator for /etc/mail/credentials"
+
+# Ask the user for their name
+echo "What is the username? (Enter name and hit Return)"
+read username
+
+# Ask for the password
+echo "What will be the password for $username@example.com? (Enter name and hit Return)"
+read pswd
+hash=$(smtpctl encrypt $pswd)
+echo
+echo "Password hash is $hash"
+echo
+
+# Echo the new entry for /etc/mail/credentials
+echo "Review the following line for errors:"
+echo 
+vmailuser=$username@example.com:$hash:vmail:2000:2000:/var/vmail/example.com/$username::userdb_mail=maildir:/var/vmail/example.com/$username
+echo $vmailuser
+echo
+
+echo "If correct, enter y to append to /etc/mail/credentials (y/n)"
+read choice
+if [ "${choice}" = "y" ] ; then
+  echo $vmailuser >> /etc/mail/credentials
+  echo "Appended to /etc/mail/credentials. Check file for accuracy."
+else
+  echo "Copy and paste manually, or re-run program if needed."
+fi
+
+echo "Append to /etc/mail/virtuals (y/n)"
+read choice
+if [ "${choice}" = "y" ] ; then
+  echo $vmailuser >> /etc/mail/virtuals
+  echo "Appended to /etc/mail/virtuals. Check file for accuracy."
+else
+  echo "Copy and paste manually, or re-run program if needed."
+fi
+echo "Done"</code></pre>
+
+<p>5. Create and populate the /etc/mail/virtuals file:</p>
+
+<pre><code>doas touch /etc/mail/virtuals
+doas chmod 0440 /etc/mail/virtuals
+doas chown _smtpd:_dovecot /etc/mail/virtuals</code></pre>
+
+<p>Edit the file to contain list and aliases of users:</p>
+
+<pre><code>abuse@example.com: john@example.com
+hostmaster@example.com: john@example.com
+postmaster@example.com: john@example.com
+webmaster@example.com: john@example.com
+john@example.com: vmail
+jack@example.com: vmail
+yvonne@example.com: vmail</code></pre>
+
+<p>Next: <a href="./openbsd_mailserver_opensmtpd.html">Initial OpenSMTPD configuration</a></p>
+
+<p>Previous: <a href="./openbsd_mailserver_certificates.html">OpenBSD mail server - Certificates</a></p>
+
+<p></br></p>
+
+<p>Posted by Gordon, No Hair Github Pages, August 24, 2021</p>
+
+<p>&copy; nohair.net and the author</p>
+
+	  </div class="twelve columns">
+    
+	</div class="row">
+
+ <!-- End Post body -->
+
+ <!-- Footer --> 
+	<div class="row">
+      <div class="twelve columns" style="text-align: center;">
+		<p>For comments, corrections, and addenda, email: gordon[AT]nohair.net</p>
+		<p><a href="./index.html">Github Pages index</a> | <a href="https://www.nohair.net">Nohair.net</a> | <a href="https://www.nohair.net/links.html">Links</a> | <a href="https://www.nohair.net/cams.html">Surfcams</a></p></br>
+	  </div class="twelve columns">
+	</div class="row">
+    
+ <!-- End Footer -->
+
+  </div class="container">
+
+<!-- End Document -->
+
+</body>
+</html>
