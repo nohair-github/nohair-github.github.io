@@ -121,7 +121,7 @@ secure_ip = "127.0.0.1";
 
 <p>3. More securely use the rspamd web interface:</p>
 
-The best and easiest way to do this is with an SSH tunnel. This obivates the need for changing the rspamd configuration, using relayd, or tls certificates. First block port 11334 at the firewall, if you opened in the last step. Then, create a SSH tunnel:</p>
+The best and easiest way to do this is with an SSH tunnel. This obivates the need for changing the rspamd configuration, opening ports in the firewall (beside ssh which is already open, I assume), using relayd, or tls certificates. First, block port 11334 at the firewall, if you opened in the last step. Then, create a SSH tunnel:</p>
 
 <pre><code>ssh -N -L local_port:web_UI_address_of_rspamd:remote_port_of_rspamd_web_UI ip.add.of.server</code></pre>
 
