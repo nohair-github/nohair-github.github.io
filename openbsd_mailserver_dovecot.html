@@ -1,0 +1,217 @@
+<html lang="en">
+
+<head>
+
+  <!-- Basic Page Needs -->
+  <meta charset="utf-8">
+  <title>No Hair Github Pages: OpenBSD Mail Server Notes - Dovecot configuration</title>
+  <meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+  <meta name="generator" content="GSB">
+  <meta name="description" content="Various items of interest to the authors">
+  <meta name="author" content="Our writers and correspondents">
+
+  <!-- Mobile Specific Metas -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- FONT -->
+  <link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="./normalize.css">
+  <link rel="stylesheet" href="./skeleton.css">
+
+  <!-- Favicon -->
+  <link href="data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQEAYAAABPYyMiAAAABmJLR0T\
+8JWPfcAAAACXBIWXMAAABIAAAASABGyWs+AAACNElEQVRIx41VzUs6QRh+XH4SifRBL\
+CEIshBqLdFeIrwIfVqnoq5eApOK+kO6dimo6NC96GgSSlDSIUo7ZItkQunW0gdlBRn0\
+O8Q0Mds0+1yGeb+e931n5h0HBBgcjEQikc9PkR0PyWQikUg4HDw9V0GIY7F4fGaGyg8\
+P8mTEz5hW5vPp2nA1tbGxtKSOBHJLnEqdXCQTosrvrgoFHQdmJiYm5udFXdSYg14xB8\
+f7+9OpziBx8e7O9MECoWjoNzYGBgbCwa5SciiQKyxE9PhvHywl9ZNDZ6vQ0N1kS4CVx\
+e3t4+P9OzlmWPx+sVV86Drudyx8d8T9WYJo3N5UKAHzVvba2uLiwQPWrq5ubqRSwt7e\
+zs71N5eHw0NDoKBCLjY39lJ5NDoH4jCvoAMH9fblsGHRfX9c7HZbCQiInNjx4thOgCA\
+Q6OgIBIC3t4eHalXccmJHESwHIGq+v2KApyeOp2vr8DISFf8DCwvLyysr7OD6Sqmtbd\
+TffT01NTk5P0LqmqoigKkM1mMj9vgcD+zw6O8PhUIga9vQEg5oGnJ3l87oO+HxfAQlK\
+pWKxWATa24NBv58Sk9dRKul6LkftyWCSWMH32Ui1mstFV3YCulx1dbNhWQynd7fp35N\
+TS0tsmwlFt6BbDaT2d2leadk06Qyu3GYSH8C8i+qysU6u8H3O652G1Wqv9Rmz7L+A5y\
+HJrq8cDXF0Zhmla7a+vK5Vy2T6xsAOijoggIib4DwP6V6vAI3f4AAAAAElFTkSuQmCC=="
+rel="icon" type="image/x-icon" />
+
+  <!--  Scripts -->
+  
+</head>
+
+
+<body>
+
+<!-- Primary Page Layout -->
+  
+<div class="container">
+  
+ <!-- Header -->
+    <div class="row">
+		
+      <div class="twelve columns" style="margin-top: 4%; text-align: center;">
+        You are here: <a href="./index.html">Home</a>  > <a href="./openbsd_mailserver_pf.html">OpenBSD mail server, Part 7: Dovecot configuration</a></br>
+      </div class="twelve columns">
+      
+      <div class="twelve columns" style="margin-top: 3%; text-align: center;">
+	  <img src="./spacer.gif" height="30px"></br>
+	  <h4><b>No Hair Github Pages</b></h4>
+	  </div class="twelve columns">
+
+ 	</div class ="row">
+
+ <!-- End Header -->
+
+ <!-- Post body -->
+	<div class="row">
+	
+	  <div class="twelve columns" style="margin-top: 3%; text-align: center;">
+		<h5><b>OpenBSD mail server, Part 7: Dovecot configuration</b></h5>
+	  </div class="twelve columns">
+
+	  <div class="twelve columns" style="margin-top: 3%; text-align: left;">
+		
+<p>G. Install, configure and test Dovecot</p>
+
+<p>Here we basically follow the <a href="https://www.vultr.com/docs/an-openbsd-e-mail-server-using-opensmtpd-dovecot-rspamd-and-rainloop#_Optional__Configure_RainLoop_Webmail">vultr.com instructions</a>, with a few modifications.</p>
+
+<p>1. Define login class: Define a login class for the Dovecot daemon. At the bottom of /etc/login.conf add the following lines.</p>
+
+<pre><code>dovecot:\
+	:openfiles-cur=1024:\
+	:openfiles-max=2048:\
+        :tc=daemon:</code></pre>
+
+<p>2. Check /etc/dovecot/conf.d/10-ssl.conf to be sure the ssl_cert and ssl-key definitions are commented out as shown.</p>
+
+<pre><code>...
+# PEM encoded X.509 SSL/TLS certificate and private key. They're opened before
+# dropping root privileges, so keep the key file unreadable by anyone but
+# root. Included doc/mkcert.sh can be used to easily generate self-signed
+# certificate, just make sure to update the domains in dovecot-openssl.cnf
+#ssl_cert = </etc/ssl/dovecotcert.pem
+#ssl_key = </etc/ssl/private/dovecot.pem
+...</code></pre>
+
+<p>3. Instead of editing individually each of the many config files of Dovecot, you can simply create a /etc/dovecot/local.conf file which will override any options. This example is from the <a href="https://www.vultr.com/docs/an-openbsd-e-mail-server-using-opensmtpd-dovecot-rspamd-and-rainloop#_Optional__Configure_RainLoop_Webmail">vultr.com instructions</a> and works if you install by those instructions. If you use another means of auth, this will need to be edited:</P.
+
+<pre><code>
+auth_mechanisms = plain
+first_valid_uid = 2000
+first_valid_gid = 2000
+mail_location = maildir:/var/vmail/%d/%n
+mail_plugin_dir = /usr/local/lib/dovecot
+managesieve_notify_capability = mailto
+managesieve_sieve_capability = fileinto reject envelope encoded-character vacation subaddress comparator-i;ascii-numeric relational regex  imap4flags copy include variables body enotify environment mailbox date index ihave duplicate mime foreverypart extracttext imapsieve vnd.dovecot.imapsieve
+mbox_write_locks = fcntl
+mmap_disable = yes
+namespace inbox {
+  inbox = yes
+  location =
+  mailbox Archive {
+  auto = subscribe
+  special_use = \Archive
+  }
+  mailbox Drafts {
+  auto = subscribe
+  special_use = \Drafts
+  }
+  mailbox Junk {
+  auto = subscribe
+  special_use = \Junk
+  }
+  mailbox Sent {
+  auto = subscribe
+  special_use = \Sent
+  }
+  mailbox Trash {
+  auto = subscribe
+  special_use = \Trash
+  }
+  prefix =
+}
+passdb {
+  args = scheme=CRYPT username_format=%u /etc/mail/credentials
+  driver = passwd-file
+  name =
+}
+plugin {
+  imapsieve_mailbox1_before = file:/usr/local/lib/dovecot/sieve/report-spam.sieve
+  imapsieve_mailbox1_causes = COPY
+  imapsieve_mailbox1_name = Junk
+  imapsieve_mailbox2_before = file:/usr/local/lib/dovecot/sieve/report-ham.sieve
+  imapsieve_mailbox2_causes = COPY
+  imapsieve_mailbox2_from = Junk
+  imapsieve_mailbox2_name = *
+  sieve = file:~/sieve;active=~/.dovecot.sieve
+  sieve_global_extensions = +vnd.dovecot.pipe +vnd.dovecot.environment
+  sieve_pipe_bin_dir = /usr/local/lib/dovecot/sieve
+  sieve_plugins = sieve_imapsieve sieve_extprograms
+}
+protocols = imap sieve
+service imap-login {
+  inet_listener imap {
+  port = 0
+  }
+}
+service managesieve-login {
+  inet_listener sieve {
+  port = 4190
+  }
+  inet_listener sieve_deprecated {
+  port = 2000
+  }
+}
+ssl_cert = </etc/ssl/mail.crt
+ssl_key = </etc/ssl/private/mail.key
+userdb {
+  args = username_format=%u /etc/mail/credentials
+  driver = passwd-file
+  name =
+}
+protocol imap {
+  mail_plugins = " imap_sieve"
+}
+</code></pre>
+
+<p>Be sure to edit the location of your TLS credentials in /etc/ssl. Then, enable and start dovecot.</p>
+
+<pre><code>doas rcctl enable dovecot
+doas rcctl start dovecot</code></pre>
+
+<p>Check 'pa aux' to see if it's running and review /var/log/maillog for error messages.</p>
+
+
+<p>Next: <a href="./openbsd_mailserver_rspamd.html">rspamd configuration</a></p>
+
+<p>Previous: <a href="./openbsd_mailserver_pf.html">OpenBSD mail server - PF configuration</a></p>
+
+<p></br></p>
+
+<p>Posted by Gordon, No Hair Github Pages, August 24, 2021</p>
+
+<p>&copy; nohair.net and the author</p>
+
+	  </div class="twelve columns">
+    
+	</div class="row">
+
+ <!-- End Post body -->
+
+ <!-- Footer --> 
+	<div class="row">
+      <div class="twelve columns" style="text-align: center;">
+		<p>For comments, corrections, and addenda, email: gordon[AT]nohair.net</p>
+		<p><a href="./index.html">Github Pages index</a> | <a href="https://www.nohair.net">Nohair.net</a> | <a href="https://www.nohair.net/links.html">Links</a> | <a href="https://www.nohair.net/cams.html">Surfcams</a></p></br>
+	  </div class="twelve columns">
+	</div class="row">
+    
+ <!-- End Footer -->
+
+  </div class="container">
+
+<!-- End Document -->
+
+</body>
+</html>
