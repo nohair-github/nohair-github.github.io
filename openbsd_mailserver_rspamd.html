@@ -96,7 +96,7 @@ doas rcctl start rspamd</code></pre>
 
 <p>rspamd has a web ui which displays statistics and allows adjustment of the configuration. This is configured with /etc/rspamd/worker-controller.inc which is not to be edited. Instead, create and edit /etc/rspamd/overrides.d/worker-controller.inc which is not supposecd to be edited. Instead, we will edit file of the same name in the /etc/rspamd/override.d/ directory:</p>
 
-<pre><coded>doas cp /etc/rspamd/worker-controller.inc /etc/rspamd/override.d/worker-controller.inc:</p>
+<pre><code>doas cp /etc/rspamd/worker-controller.inc /etc/rspamd/override.d/worker-controller.inc:</p>
 doas nano-w /etc/rspamd/override.d/worker-controller.inc</code></pre>
 
 <p>which displays</p>
