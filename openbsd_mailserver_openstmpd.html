@@ -1,0 +1,172 @@
+<html lang="en">
+
+<head>
+
+  <!-- Basic Page Needs -->
+  <meta charset="utf-8">
+  <title>No Hair Github Pages: OpenBSD Mail Server Notes - OpenSMTPD 1</title>
+  <meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+  <meta name="generator" content="GSB">
+  <meta name="description" content="Various items of interest to the authors">
+  <meta name="author" content="Our writers and correspondents">
+
+  <!-- Mobile Specific Metas -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- FONT -->
+  <link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="./normalize.css">
+  <link rel="stylesheet" href="./skeleton.css">
+
+  <!-- Favicon -->
+  <link href="data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQEAYAAABPYyMiAAAABmJLR0T\
+8JWPfcAAAACXBIWXMAAABIAAAASABGyWs+AAACNElEQVRIx41VzUs6QRh+XH4SifRBL\
+CEIshBqLdFeIrwIfVqnoq5eApOK+kO6dimo6NC96GgSSlDSIUo7ZItkQunW0gdlBRn0\
+O8Q0Mds0+1yGeb+e931n5h0HBBgcjEQikc9PkR0PyWQikUg4HDw9V0GIY7F4fGaGyg8\
+P8mTEz5hW5vPp2nA1tbGxtKSOBHJLnEqdXCQTosrvrgoFHQdmJiYm5udFXdSYg14xB8\
+f7+9OpziBx8e7O9MECoWjoNzYGBgbCwa5SciiQKyxE9PhvHywl9ZNDZ6vQ0N1kS4CVx\
+e3t4+P9OzlmWPx+sVV86Drudyx8d8T9WYJo3N5UKAHzVvba2uLiwQPWrq5ubqRSwt7e\
+zs71N5eHw0NDoKBCLjY39lJ5NDoH4jCvoAMH9fblsGHRfX9c7HZbCQiInNjx4thOgCA\
+Q6OgIBIC3t4eHalXccmJHESwHIGq+v2KApyeOp2vr8DISFf8DCwvLyysr7OD6Sqmtbd\
+TffT01NTk5P0LqmqoigKkM1mMj9vgcD+zw6O8PhUIga9vQEg5oGnJ3l87oO+HxfAQlK\
+pWKxWATa24NBv58Sk9dRKul6LkftyWCSWMH32Ui1mstFV3YCulx1dbNhWQynd7fp35N\
+TS0tsmwlFt6BbDaT2d2leadk06Qyu3GYSH8C8i+qysU6u8H3O652G1Wqv9Rmz7L+A5y\
+HJrq8cDXF0Zhmla7a+vK5Vy2T6xsAOijoggIib4DwP6V6vAI3f4AAAAAElFTkSuQmCC=="
+rel="icon" type="image/x-icon" />
+
+  <!--  Scripts -->
+  
+</head>
+
+
+<body>
+
+<!-- Primary Page Layout -->
+  
+<div class="container">
+  
+ <!-- Header -->
+    <div class="row">
+		
+      <div class="twelve columns" style="margin-top: 4%; text-align: center;">
+        You are here: <a href="./index.html">Home</a>  > <a href="./openbsd_mailserver_opensmtpd1.html">OpenBSD mail server, Part 5. OpenSMTPD</a></br>
+      </div class="twelve columns">
+      
+      <div class="twelve columns" style="margin-top: 3%; text-align: center;">
+	  <img src="./spacer.gif" height="30px"></br>
+	  <h4><b>No Hair Github Pages</b></h4>
+	  </div class="twelve columns">
+
+ 	</div class ="row">
+
+ <!-- End Header -->
+
+ <!-- Post body -->
+	<div class="row">
+	
+	  <div class="twelve columns" style="margin-top: 3%; text-align: center;">
+		<h5><b>OpenBSD mail server, Part 5: OpenSMTPD</b></h5>
+	  </div class="twelve columns">
+
+	  <div class="twelve columns" style="margin-top: 3%; text-align: left;">
+		
+<p>E. Preliminary configuration and testing of OpenSMTPD</p>
+
+<p>1. At this point, we might should go ahead and install all the other packages needed:</p>
+
+<pre><code>pkg_add opensmtpd-extras opensmtpd-filter-rspamd dovecot dovecot-pigeonhole rspamd redis</code></pre>
+
+<p>2. OpenSMTPD is installed in base. First, copy the default smtpd.conf:</p>
+
+<pre><code>doas cp /etc/mail/smtpd.conf /etc/mail/smtpd.conf.default</code></pre>
+
+<p>Then create your new smtpd.conf like so:</p>
+
+<pre><code># smtpd.conf
+
+# PKI keys for TLS
+pki mail cert "/etc/ssl/mail.example.com.fullchain.pem"
+pki mail key "/etc/ssl/private/mail.example.com.key"
+
+# Tables
+table aliases file:/etc/mail/aliases
+table credentials passwd:/etc/mail/credentials
+table virtuals file:/etc/mail/virtuals
+
+# Listeners
+listen on all tls pki "mail" hostname "mail.example.com"
+listen on egress port submission tls pki "mail" hostname "mail.example.com"
+
+# Actions
+action "local_mail" mbox alias <aliases>
+action "domain_mail" maildir "/var/vmail/nohair.online/%{dest.user:lowercase}" \
+	virtual <virtuals>
+action "outbound" relay
+
+# Rules
+
+# Local
+match from local for local action "local_mail"
+match from local for domain "nohair.online" action "domain_mail"
+match from local for any action "outbound"
+
+
+# Remote
+match from any for domain "nohair.online" action "domain_mail"
+match from any for any action "outbound"
+</code></pre>
+
+<p>We'll flesh this out after dovecot and rspamd are set up.</p>
+
+<p>3. Check configuration and restart smtpd:</p>
+
+<pre><code>doas smtpd -nf /etc/mail/smtpd.conf
+		   doas rcctl restart smtpd</code></pre>
+
+<p>4. Check if it's working by sending messages from a local user to domain address:</p>
+
+<pre><code>mail -s "Test mail from local user" john@example.com
+John,
+This might work.
+Cheers
+ctrl-d</code></pre>
+
+<p>Check if the mail is received:</p>
+
+<pre><code>doas ls -al /var/vmail/example.com/john/new/</code</pre>
+
+
+<p>Next: <a href="./openbsd_mailserver_dovecot.html">Dovecot configuration</a></p>
+
+<p>Previous: <a href="./openbsd_mailserver_virtual.html">OpenBSD mail server - Virtual users</a></p>
+
+<p></br></p>
+
+<p>Posted by Gordon, No Hair Github Pages, August 24, 2021</p>
+
+<p>&copy; nohair.net and the author</p>
+
+	  </div class="twelve columns">
+    
+	</div class="row">
+
+ <!-- End Post body -->
+
+ <!-- Footer --> 
+	<div class="row">
+      <div class="twelve columns" style="text-align: center;">
+		<p>For comments, corrections, and addenda, email: gordon[AT]nohair.net</p>
+		<p><a href="./index.html">Github Pages index</a> | <a href="https://www.nohair.net">Nohair.net</a> | <a href="https://www.nohair.net/links.html">Links</a> | <a href="https://www.nohair.net/cams.html">Surfcams</a></p></br>
+	  </div class="twelve columns">
+	</div class="row">
+    
+ <!-- End Footer -->
+
+  </div class="container">
+
+<!-- End Document -->
+
+</body>
+</html>
