@@ -60,9 +60,9 @@
 
 <p>J. Further configuration of OpenSMTPD</p>
 
-<p>The final smtpd.conf file is here. Changes from the initial file above are indicated in bold.</p>
+<p>After adding in all the components above, smtpd.conf is modified as seen below. Changes from the initial file above are indicated in bold.</p>
 
-<pre><code># smtpd.conf for nohair.online mailserver 8/15/21 gsb
+<pre><code># smtpd.conf for nohair.online mailserver 8/15/21
 
 # PKI keys for TLS
 pki mail cert "/etc/ssl/primo.nohair.online.fullchain.pem"
@@ -102,7 +102,13 @@ match from local for any action "outbound"
 match from any for domain "nohair.online" action "domain_mail"
 <b>match auth from any for any action "outbound"</b></code></pre>
 
+<p>OpenSMTPD reads the directives in smtpd.conf from top to bottom. In particular, when a message is processed, the actions are read top to bottom and the message in processed according to the first action which is matched.</p?
 
+<p>The filter definition are for two built-in filters (rdns and fcrdns) where OpenSMTPD checks whether the message is from a sender with a proper reverse DN and forward-confirmed reverse DNS. IF not, the message is tossed. After that, the message goes to rspamd for calssification.</p>
+
+<p>Next, the first listener is for incoming mail. The "tls" instead of "tls-require" is used because some mail relays still do not use tls. The second line is for outgoing mail which can only be sent by a authorized user and is checked for spam.</p>
+
+<p>The last line requires authorization for sending mail, which prvents our mail server for being used as an open relay.</p>
 
 
 <p>Next: <a href="./openbsd_mailserver_pfbadhost.html">pfbadhost</a></p>
