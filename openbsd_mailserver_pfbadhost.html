@@ -60,7 +60,9 @@
 
 <p>K. Install pf-badhost</p>
 
-<p>For additional spam rejection and to protect your mail server, install <a href="https://www.geoghegan.ca/pub/pf-badhost/">pf-badhost</a>. Edit pf-badhost.sh to include blocklists for email attackers:</p>
+<p>For additional spam rejection and to protect your mail server, download and install <a href="https://www.geoghegan.ca/pub/pf-badhost/">pf-badhost</a> as decribed on the authors page. (BTW, tip your local developer; both pf-badhost and unbound-abblock are worthy projects.)</p>
+
+<p> Edit pf-badhost.sh to include blocklists for email attackers:</p>
 
 <pre><code>....
 ##################################################################
@@ -85,7 +87,7 @@ https://lists.blocklist.de/lists/postfix.txt
 
 <pre><code>doas -u _pfbadhost pf-badhost -O openbsd</code></pre>
 
-<p>If you haven't donw so during the installation, remember to add the block directives to /etc/pf.conf:</p>
+<p>If you haven't done so during the installation, remember to add the block directives to /etc/pf.conf:</p>
 
 <pre></code>...
 table <pfbadhost> persist file "/etc/pf-badhost.txt"
