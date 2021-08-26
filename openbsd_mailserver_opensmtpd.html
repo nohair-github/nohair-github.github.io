@@ -86,9 +86,9 @@ listen on all tls pki "mail" hostname "mail.example.com"
 listen on egress port submission tls pki "mail" hostname "mail.example.com"
 
 # Actions
-action "local_mail" mbox alias <aliases>
+action "local_mail" mbox alias &lt;aliases&gt;
 action "domain_mail" maildir "/var/vmail/nohair.online/%{dest.user:lowercase}" \
-	virtual <virtuals>
+	virtual &lt;virtuals&gt;
 action "outbound" relay
 
 # Rules
@@ -122,6 +122,8 @@ ctrl-d</code></pre>
 <p>Check if the mail is received:</p>
 
 <pre><code>doas ls -al /var/vmail/example.com/john/new/</code></pre>
+
+<p>Once you're sure that it works, go ahead and stop smtpd because this configuration allows your server to be an open relay. We'll finish up OpenSMTPD configuration later.</p>
 
 
 <p>Next: <a href="./openbsd_mailserver_pf.html">PF configuration</a></p>

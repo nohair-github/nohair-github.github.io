@@ -60,7 +60,49 @@
 
 <p>J. Further configuration of OpenSMTPD</p>
 
-<p>Under construction</p>
+<p>The final smtpd.conf file is here. Changes from the initial file above are indicated in bold.</p>
+
+<pre><code># smtpd.conf for nohair.online mailserver 8/15/21 gsb
+
+# PKI keys for TLS
+pki mail cert "/etc/ssl/primo.nohair.online.fullchain.pem"
+pki mail key "/etc/ssl/private/primo.nohair.online.key"
+
+# Macros
+filters = " { check_rdns check_fcrdns rspamd } "
+
+<b># Filters
+filter check_rdns phase connect match !rdns disconnect "550 DNS error"
+filter check_fcrdns phase connect match !fcrdns disconnect "550 DNS error"
+filter "rspamd" proc-exec "/usr/local/libexec/smtpd/filter-rspamd"</b>
+
+# Tables
+table aliases file:/etc/mail/aliases
+table credentials passwd:/etc/mail/credentials
+table virtuals file:/etc/mail/virtuals
+
+# Listeners
+<b>listen on all tls pki "mail" hostname "mail.example.com" mask-src filter $filters
+listen on egress port submission tls-require pki "mail" hostname "mail.example.com" \
+  auth &lt;credentials&gt; filter "rspamd"</b>
+
+# Actions
+action "local_mail" mbox alias &lt;aliases&gt;
+action "domain_mail" maildir "/var/vmail/nohair.online/%{dest.user:lowercase}" virtual &lt;virtuals&gt;
+action "outbound" relay
+
+# Rules
+
+# Local
+match from local for local action "local_mail"
+match from local for domain "nohair.online" action "domain_mail"
+match from local for any action "outbound"
+
+# Remote
+match from any for domain "nohair.online" action "domain_mail"
+<b>match auth from any for any action "outbound"</b></code></pre>
+
+
 
 
 <p>Next: <a href="./openbsd_mailserver_pfbadhost.html">pfbadhost</a></p>
