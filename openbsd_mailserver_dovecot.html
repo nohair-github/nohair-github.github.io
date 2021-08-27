@@ -77,8 +77,8 @@
 # dropping root privileges, so keep the key file unreadable by anyone but
 # root. Included doc/mkcert.sh can be used to easily generate self-signed
 # certificate, just make sure to update the domains in dovecot-openssl.cnf
-#ssl_cert = </etc/ssl/dovecotcert.pem
-#ssl_key = </etc/ssl/private/dovecot.pem
+#ssl_cert = &lt;/etc/ssl/dovecotcert.pem
+#ssl_key = &lt;/etc/ssl/private/dovecot.pem
 ...</code></pre>
 
 <p>3. Instead of editing individually each of the many config files of Dovecot, you can simply create a /etc/dovecot/local.conf file which will override any options. This example is from the <a href="https://www.vultr.com/docs/an-openbsd-e-mail-server-using-opensmtpd-dovecot-rspamd-and-rainloop#_Optional__Configure_RainLoop_Webmail">vultr.com instructions</a> and works if you install by those instructions. If you use another means of auth, this will need to be edited:</p>
