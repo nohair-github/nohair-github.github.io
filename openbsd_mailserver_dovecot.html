@@ -150,8 +150,8 @@ service managesieve-login {
   port = 2000
   }
 }
-ssl_cert = </etc/ssl/mail.crt
-ssl_key = </etc/ssl/private/mail.key
+ssl_cert = &lt;/etc/ssl/mail.crt
+ssl_key = &lt;/etc/ssl/private/mail.key
 userdb {
   args = username_format=%u /etc/mail/credentials
   driver = passwd-file
@@ -162,7 +162,7 @@ protocol imap {
 }
 </code></pre>
 
-<p>Be sure to edit the location of your TLS credentials in /etc/ssl. Then, enable and start dovecot.</p>
+<p>Be sure to edit the location of your TLS credentials. Then, enable and start dovecot.</p>
 
 <pre><code>doas rcctl enable dovecot
 doas rcctl start dovecot</code></pre>
