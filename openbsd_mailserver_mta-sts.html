@@ -1,0 +1,246 @@
+<html lang="en">
+
+<head>
+
+  <!-- Basic Page Needs -->
+  <meta charset="utf-8">
+  <title>No Hair Github Pages: OpenBSD Mail Server Notes - TLSRPT and MTA-STS</title>
+  <meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+  <meta name="generator" content="GSB">
+  <meta name="description" content="Various items of interest to the authors">
+  <meta name="author" content="Our writers and correspondents">
+
+  <!-- Mobile Specific Metas -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- FONT -->
+  <link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="./normalize.css">
+  <link rel="stylesheet" href="./skeleton.css">
+
+  <!-- Favicon -->
+
+  <!--  Scripts -->
+  
+</head>
+
+
+<body>
+
+<!-- Primary Page Layout -->
+  
+<div class="container">
+  
+ <!-- Header -->
+    <div class="row">
+		
+      <div class="twelve columns" style="margin-top: 4%; text-align: center;">
+        You are here: <a href="./index.html">Home</a>  > <a href="./openbsd_mailserver_mta-sts.html">OpenBSD mail server: TLSRPT and MTA-STS</a></br>
+      </div class="twelve columns">
+      
+      <div class="twelve columns" style="margin-top: 3%; text-align: center;">
+	  <img src="./spacer.gif" height="30px"></br>
+	  <h4><b>No Hair Github Pages</b></h4>
+	  </div class="twelve columns">
+
+ 	</div class ="row">
+
+ <!-- End Header -->
+
+ <!-- Post body -->
+	<div class="row">
+	
+	  <div class="twelve columns" style="margin-top: 3%; text-align: center;">
+		<h5><b>Setting up a mailserver on OpenBSD 6.9: TLSRPT and MTA-STS</b></h5>
+	  </div class="twelve columns">
+
+	  <div class="twelve columns" style="margin-top: 3%; text-align: left;">
+
+<p>N. Optional configuration: TLSRPT and MTA-STS</p>
+
+<p>SPF, DKIM and DMARC are widely used but spam volume has, if anything, increased. In 2018, the IETF released RFC 8460 and RFC 8461, which respectively define TLSRPT and MTA-STS. These are not widely adopted yet but email providers' spam filters may use presence or absense of TLSRPT and MTA-STS as part of their spam scoring system. The disadvantage of enabling MTA-STS is that it restricts mail traffic to you mail server to that which come in over TLS. Thus, you may not receive certaim messages if the remote relay does not use TLS/SSL.</p>
+
+<p>1. TLSRPT</p>
+
+<p>TLS reporting, or TLSRPT for short, is very simple: all it does is provide a contact email address in case somebody has trouble with the TLS configuration of your SMTP server.</p>
+
+<p>To enable it for your custom email domain example.com, simply create a DNS TXT record for the _smtp._tls subdomain:</p>
+
+<pre><code>_smtp._tls.example.com. TXT "v=TLSRPTv1; rua=mailto:<contact>"</code></pre>
+
+<p>without the angle braces, or,</p>
+
+<pre><code>_smtp._tls.example.com. TXT "v=TLSRPTv1; rua=mailto:postmaster@example.com"</code></pre>
+
+<p>where &lt;contact&gt; is an email address of your admin contact.</p>
+
+<p>2. MTA-STS</p>
+
+<p>MTA Strict Transport Security (MTA-STS) tells other servers that they should avoid sending you unencrypted email and should only accept certain certificates from your side. MTA-STS requires an HTTP web server but we already have one to manage our Let's Encrypt certificate renewals.</p>
+
+<p>a. DNS: The DNS part is still pretty simple: create yet another DNS TXT record, this time for the subdomain _mta-sts:</p>
+
+<pre><code>_mta-sts.example.com. TXT "v=STSv1; id=&lt;id%gt;"</code></pre>
+
+<p>The &lt;id&gt; identifies the policy; so you and remote servers can detect changes, I use the date of creation of mta-sts.txt.</p>
+
+<pre><code>_mta-sts.example.com. TXT "v=STSv1; id=210803"</code></pre>
+
+<p>Don't forget to create an A record which for subdomain mta-sts (without underscore):</p>
+
+<pre><code>mta-sts.example.com. IN A 1.2.3.4</code></pre>
+
+<p>And add CCA records to your new mta-sts subdomain:</p>
+
+<pre><code>mta-sts.example.com.  CAA 0 issue "letsencrypt.org"</code></pre>
+
+<p>b. Create the mta-sts policy file:</p>
+
+<p>First, create the web root folder for the file.</p>
+
+<pre><code>doas mkdir -p /var/www/mta-sts/</code></pre>
+
+<p>Now create the file mta-sts.txt. The contents are as follows, where mx1.example.com and mx2.example.com are the mail hosts defined in example.com’s DNS MX records.</p>
+
+<pre><code>version: STSv1
+mode: enforce
+mx: mx1.example.com
+mx: mx2.example.com
+max_age: <age></code></pre>
+
+<p>Note - weirdly, this file is said to apparently require CRLF Windows-style line endings ("\r\n") but appears to work fine with txt files created by nano. So, for our example:</p>
+
+<pre><code>doas nano -w /var/www/mta-sts/mta-sts.txt
+version: STSv1
+mode: testing
+mx: mail.example.com
+max_age: 86400
+ctrl-O
+ctrl-X</code></pre>
+
+<p>c. httpd: Set your web server to obtain certificates and serve the file. Note that the policy file must be served over HTTPS, so you need a yet another valid TLS certificate for the mta-sts subdomain.</p>
+
+<pre><code># http server to obtain and renew Let's Encrypt certificate for mta-sts
+
+server "mta-sts.example.com" {
+        listen on $ext_addr port $ext_HTTP_port
+
+        location "/.well-known/acme-challenge/*" {
+                root "/acme"
+                request strip 2
+        }
+        
+        location * {
+                block return 302 "https://$HTTP_HOST$REQUEST_URI"
+        }
+}
+
+# https server for serve mta-sts.txt
+
+#server "mta-sts.example.com" {
+#        listen on $ext_addr port tls $ext_HTTPS_port
+        
+#        tls {
+#            certificate "/etc/ssl/mta-sts.example.com.fullchain.pem"
+#            key "/etc/ssl/private/mta-sts.example.com.key"
+#            }
+
+#        location "/.well-known/mta-sts.txt" {
+#                root "/mta-sts"
+#                request strip 1 
+#                }
+
+#        location "/.well-known/acme-challenge/*" {
+#                root "/acme"
+#                request strip 2
+#        }
+        
+#}</code></pre>
+
+<p>Check and restart httpd:</p>
+
+<pre><code>doas httpd -n
+doas rcctl restart httpd</code></pre>
+
+<p>d. Now get the new certificates:</p>
+
+<p>Configure acme-client: Add a stanza to acme-client.conf:</p>
+
+<pre><code>domain mta-sts.example.com {
+        domain key "/etc/ssl/private/mta-sts.example.com.key"
+        domain certificate "/etc/ssl/mta-sts.example.com.crt"
+        domain full chain certificate "/etc/ssl/mta-sts.example.com.fullchain.pem"
+        sign with letsencrypt
+}</code></pre>
+
+<p>Now generate certificates:</p>
+
+<pre><code>doas acme-client -v mta-sts.example.com</code></pre>
+
+<p>Check if the new certificates are in /etc/ssl and keys in /etc/ssl/private.</p>
+
+<p>Now uncomment the mta-sts https server stanza in /etc/httpd.conf and restart httpd.</p>
+
+<p>e. Set up cron job to check and renew certificate:</p>
+
+<pre><code>doas crontab -e -u root</code></pre>
+
+<p>Add:</p>
+
+<pre><code>30	2	*	*	*	acme-client mta-sts.example.com</code></pre>
+
+<p>f. Check your work by using various online MTA-STS validation tools:
+<ul><li>ESMTP <a href="https://esmtp.email/tools/mta-sts/">https://esmtp.email/tools/mta-sts/</a>)
+<li>Ayke (<a href="https://aykevl.nl/apps/mta-sts/">https://aykevl.nl/apps/mta-sts/</a>)
+<li>CheckTLS <a href="https://www.checktls.com/howto.html#Deeper">https://www.checktls.com/howto.html#Deeper</a>
+<li>Hardenize <a href="https://www.hardenize.com/">https://www.hardenize.com/</a>
+</ul></p>
+
+<p>Even if you did everything correctly, these tools will warn you that you’re not using DNSSEC/DANE. But, at this point, this is not widely adopted and can be <a href="https://dane.sys4.de/common_mistakes">extremely tedious</a>. I'd pass on this at present.</p>
+
+<p>Commit to all TLS:</p>
+
+<p>As noted above, enabling MTA-STS will reject message which are not sent with TLS/SSL. This may block traffic from servers which still do not require this. This will reduce spam but could block certain email providers. If you're ready to go, then proceed.
+
+<p>First, edit mta-sts.txt from "testing" to "enforce."</p>
+
+<p>Remember to increment the &lt;id&gt; in the _mta-sts DNS record. This needs to be done whenever the policy file is changed.</p>
+
+<p>That should be it.</p>
+
+<p>Additional Reading/Sources:
+<a href="https://prefetch.eu/blog/2020/email-server-extras/">https://prefetch.eu/blog/2020/email-server-extras/</a></p>
+
+
+<p>Previous: <a href="./openbsd_mailserver_testing.html">Further testing</a></p>
+
+<p></br></p>
+
+<p>Posted by Gordon, No Hair Github Pages, August 24, 2021</p>
+
+<p>&copy; nohair.net and the author</p>
+
+	  </div class="twelve columns">
+    
+	</div class="row">
+
+ <!-- End Post body -->
+
+ <!-- Footer --> 
+	<div class="row">
+      <div class="twelve columns" style="text-align: center;">
+		<p>For comments, corrections, and addenda, email: gordon[AT]nohair.net</p>
+		<p><a href="./index.html">Github Pages index</a> | <a href="https://www.nohair.net">Nohair.net</a> | <a href="https://www.nohair.net/links.html">Links</a> | <a href="https://www.nohair.net/cams.html">Surfcams</a></p></br>
+	  </div class="twelve columns">
+	</div class="row">
+    
+ <!-- End Footer -->
+
+  </div class="container">
+
+<!-- End Document -->
+
+</body>
+</html>
