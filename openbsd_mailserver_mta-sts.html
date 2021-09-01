@@ -204,7 +204,7 @@ doas rcctl restart httpd</code></pre>
 
 <p>Previously, the listen directives in smtpd.conf only specified "tls" which allowed insecure connections. As noted above, enabling MTA-STS will reject message which are not sent with TLS/SSL. This may block traffic from servers which still do not require this. It's equivalent to changing to "tls-require" in the smtpd.conf listen directives. This will reduce spam but could block certain email providers. If you're ready to go, then proceed.
 
-<p>First, edit mta-sts.txt from "testing" to "enforce."</p>
+<p>First, edit mta-sts.txt from "testing" to "enforce" then increase the lifetime to 6-12 months (31557600 sec max).</p>
 
 <p>Remember to increment the &lt;id&gt; in the _mta-sts DNS record. This needs to be done whenever the policy file is changed.</p>
 
