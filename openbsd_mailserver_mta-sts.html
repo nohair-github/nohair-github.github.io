@@ -60,7 +60,7 @@
 
 <p>N. Optional configuration: TLSRPT and MTA-STS</p>
 
-<p>SPF, DKIM and DMARC are widely used but spam volume has, if anything, increased. In 2018, the IETF released RFC 8460 and RFC 8461, which respectively define TLSRPT and MTA-STS. These are not widely adopted yet but email providers' spam filters may use presence or absense of TLSRPT and MTA-STS as part of their spam scoring system. The disadvantage of enabling MTA-STS is that it restricts mail traffic to you mail server to that which come in over TLS. Thus, you may not receive certaim messages if the remote relay does not use TLS/SSL.</p>
+<p>SPF, DKIM and DMARC are widely used but spam volume has, if anything, increased. In 2018, the IETF released RFC 8460 and RFC 8461, which respectively define TLSRPT and MTA-STS. These are not widely adopted yet but email providers' spam filters may use presence or absense of TLSRPT and MTA-STS as part of their spam scoring system. The disadvantage of enabling MTA-STS is that it restricts mail traffic to your mail server to that which comes in over TLS/SSL. Thus, you may not receive certaim messages if the odd remote relay does not use TLS/SSL. However, Google, Microsoft, Comcast, Protonmail, and amny other have adopted it.</p>
 
 <p>1. TLSRPT</p>
 
@@ -88,7 +88,7 @@
 
 <pre><code>_mta-sts.example.com. TXT "v=STSv1; id=210803"</code></pre>
 
-<p>This &lt;id&gt; does not appear anywhere else but you mustchange this every time you edit the mta-sts policy file (mta-sts.txt). Don't forget to create an A record which for subdomain mta-sts (without underscore):</p>
+<p>This &lt;id&gt; does not appear anywhere else but you must change this every time you edit the mta-sts policy file (mta-sts.txt) so servers know it has changed. Don't forget to create an A record which for subdomain mta-sts (without underscore):</p>
 
 <pre><code>mta-sts.example.com. IN A 1.2.3.4</code></pre>
 
