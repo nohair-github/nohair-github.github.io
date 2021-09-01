@@ -68,7 +68,7 @@
 
 <p>To enable it for your custom email domain example.com, simply create a DNS TXT record for the _smtp._tls subdomain:</p>
 
-<pre><code>_smtp._tls.example.com. TXT "v=TLSRPTv1; rua=mailto:<contact>"</code></pre>
+<pre><code>_smtp._tls.example.com. TXT "v=TLSRPTv1; rua=mailto:&lt;contact&gt;"</code></pre>
 
 <p>without the angle braces, or,</p>
 
@@ -82,13 +82,13 @@
 
 <p>a. DNS: The DNS part is still pretty simple: create yet another DNS TXT record, this time for the subdomain _mta-sts:</p>
 
-<pre><code>_mta-sts.example.com. TXT "v=STSv1; id=&lt;id%gt;"</code></pre>
+<pre><code>_mta-sts.example.com. TXT "v=STSv1; id=&lt;id&gt;"</code></pre>
 
 <p>The &lt;id&gt; identifies the policy; so you and remote servers can detect changes, I use the date of creation of mta-sts.txt.</p>
 
 <pre><code>_mta-sts.example.com. TXT "v=STSv1; id=210803"</code></pre>
 
-<p>Don't forget to create an A record which for subdomain mta-sts (without underscore):</p>
+<p>This &lt;id&gt; does not appear anywhere else but you mustchange this every time you edit the mta-sts policy file (mta-sts.txt). Don't forget to create an A record which for subdomain mta-sts (without underscore):</p>
 
 <pre><code>mta-sts.example.com. IN A 1.2.3.4</code></pre>
 
@@ -105,10 +105,10 @@
 <p>Now create the file mta-sts.txt. The contents are as follows, where mx1.example.com and mx2.example.com are the mail hosts defined in example.com’s DNS MX records.</p>
 
 <pre><code>version: STSv1
-mode: enforce
+mode: {none, testing, enforce}
 mx: mx1.example.com
 mx: mx2.example.com
-max_age: <age></code></pre>
+max_age: &lt;lifetime&gt;</code></pre>
 
 <p>Note - weirdly, this file is said to apparently require CRLF Windows-style line endings ("\r\n") but appears to work fine with txt files created by nano. So, for our example:</p>
 
@@ -192,17 +192,17 @@ doas rcctl restart httpd</code></pre>
 <pre><code>30	2	*	*	*	acme-client mta-sts.example.com</code></pre>
 
 <p>f. Check your work by using various online MTA-STS validation tools:
-<ul><li>ESMTP <a href="https://esmtp.email/tools/mta-sts/">https://esmtp.email/tools/mta-sts/</a>)
+<ul><li>ESMTP (<a href="https://esmtp.email/tools/mta-sts/">https://esmtp.email/tools/mta-sts/</a>)
 <li>Ayke (<a href="https://aykevl.nl/apps/mta-sts/">https://aykevl.nl/apps/mta-sts/</a>)
-<li>CheckTLS <a href="https://www.checktls.com/howto.html#Deeper">https://www.checktls.com/howto.html#Deeper</a>
-<li>Hardenize <a href="https://www.hardenize.com/">https://www.hardenize.com/</a>
+<li>CheckTLS (<a href="https://www.checktls.com/howto.html#Deeper">https://www.checktls.com/howto.html#Deeper</a>)
+<li>Hardenize (<a href="https://www.hardenize.com/">https://www.hardenize.com/</a>)
 </ul></p>
 
 <p>Even if you did everything correctly, these tools will warn you that you’re not using DNSSEC/DANE. But, at this point, this is not widely adopted and can be <a href="https://dane.sys4.de/common_mistakes">extremely tedious</a>. I'd pass on this at present.</p>
 
-<p>Commit to all TLS:</p>
+<p>g. Commit to all TLS:</p>
 
-<p>As noted above, enabling MTA-STS will reject message which are not sent with TLS/SSL. This may block traffic from servers which still do not require this. This will reduce spam but could block certain email providers. If you're ready to go, then proceed.
+<p>Previously, the listen directives in smtpd.conf only specified "tls" which allowed insecure connections. As noted above, enabling MTA-STS will reject message which are not sent with TLS/SSL. This may block traffic from servers which still do not require this. It's equivalent to changing to "tls-require" in the smtpd.conf listen directives. This will reduce spam but could block certain email providers. If you're ready to go, then proceed.
 
 <p>First, edit mta-sts.txt from "testing" to "enforce."</p>
 
