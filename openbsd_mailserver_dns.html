@@ -60,6 +60,8 @@
 		
 <p>A. DNS</p>
 
+<p>In my experience, and speaking as someone who has run my own nameservers locally with BIND, with everyDNS (RIP), DYN, and dynu.com, that most of my errors were here. This is largely because articles (including this one) use the BIND format to describe DNS records but hosting services often use an interface to set DNS records which does not at all look like a BIND record. Vultr is no exception. I'm going to stick to BIND format though as you may be using another hosting service and I don't want to get bogged down in those particular specifics.</p>
+
 <p>1. First, set up DNS for the mail server at your DNS provider</p>
 
 <p>A Record:</p>
@@ -83,7 +85,7 @@
 <p>The format of the PTR record is:</p>
 <pre><code>4.3.2.1.in-addr.arpa. 7200 IN PTR mail.example.com.</code></pre>
 
-<p>Forward-confirmed DNS requires that an A record references the name and IP and a PT record references the same IP and name, like so:</p>
+<p>Forward-confirmed DNS requires that an A record references the name and IP and a PTR record references the same IP and name, like so:</p>
 <pre><code>smtp	   3600  IN  A   1.2.3.4
 4.3.2.1.in-addr.arpa.	7200  IN  PTR   mail.example.com.</code></pre>
 
@@ -95,7 +97,7 @@
 
 <ul><li><a href="https://wiki.ircnow.org/index.php?n=DNS.Mail">IRCnow DNS for mail</a>
 <li><a href="https://manuals.gfi.com/en/kerio/connect/content/server-configuration/mail-delivery-and-dns-records/essential-dns-records-for-mail-delivery-and-spam-protection-1223.html">GFI.com mail delivery and dns</a></ul>
-<p></p>
+
 
 <p>Next: <a href="./openbsd_mailserver_dkim">Set up DKIM and DKMARC</a></p>
 
