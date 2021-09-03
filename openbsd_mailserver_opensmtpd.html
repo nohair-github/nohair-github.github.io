@@ -87,7 +87,7 @@ listen on egress port submission tls pki "mail" hostname "mail.example.com"
 
 # Actions
 action "local_mail" mbox alias &lt;aliases&gt;
-action "domain_mail" maildir "/var/vmail/nohair.online/%{dest.user:lowercase}" \
+action "domain_mail" maildir "/var/vmail/example.com/%{dest.user:lowercase}" \
 	virtual &lt;virtuals&gt;
 action "outbound" relay
 
@@ -95,12 +95,12 @@ action "outbound" relay
 
 # Local
 match from local for local action "local_mail"
-match from local for domain "nohair.online" action "domain_mail"
+match from local for domain "example.com" action "domain_mail"
 match from local for any action "outbound"
 
 
 # Remote
-match from any for domain "nohair.online" action "domain_mail"
+match from any for domain "example.com" action "domain_mail"
 match from any for any action "outbound"
 </code></pre>
 

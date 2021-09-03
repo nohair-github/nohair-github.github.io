@@ -62,11 +62,11 @@
 
 <p>After adding in all the components above, smtpd.conf is modified as seen below. Changes from the initial file above are indicated in bold.</p>
 
-<pre><code># smtpd.conf for nohair.online mailserver 8/15/21
+<pre><code># smtpd.conf for mail.example.com mailserver 8/15/21
 
 # PKI keys for TLS
-pki mail cert "/etc/ssl/primo.nohair.online.fullchain.pem"
-pki mail key "/etc/ssl/private/primo.nohair.online.key"
+pki mail cert "/etc/ssl/mail.example.com.fullchain.pem"
+pki mail key "/etc/ssl/private/mail.example.com.key"
 
 # Macros
 filters = " { check_rdns check_fcrdns rspamd } "
@@ -88,18 +88,17 @@ listen on egress port submission tls-require pki "mail" hostname "mail.example.c
 
 # Actions
 action "local_mail" mbox alias &lt;aliases&gt;
-action "domain_mail" maildir "/var/vmail/nohair.online/%{dest.user:lowercase}" virtual &lt;virtuals&gt;
+action "domain_mail" maildir "/var/vmail/example.com/%{dest.user:lowercase}" virtual &lt;virtuals&gt;
 action "outbound" relay
 
 # Rules
-
 # Local
 match from local for local action "local_mail"
-match from local for domain "nohair.online" action "domain_mail"
+match from local for domain "example.com" action "domain_mail"
 match from local for any action "outbound"
 
 # Remote
-match from any for domain "nohair.online" action "domain_mail"
+match from any for domain "example.com" action "domain_mail"
 <b>match auth from any for any action "outbound"</b></code></pre>
 
 <p>OpenSMTPD reads the directives in smtpd.conf from top to bottom. In particular, when a message is processed, the actions are read top to bottom and the message in processed according to the first action which is matched.</p?
