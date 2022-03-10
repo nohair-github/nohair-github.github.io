@@ -1,0 +1,497 @@
+<html lang="en">
+
+<head>
+
+  <!-- Basic Page Needs -->
+  <meta charset="utf-8">
+  <title>No Hair Github Pages: OpenBSD Local Mail Server</title>
+  <meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+  <meta name="generator" content="GSB">
+  <meta name="description" content="Various items of interest to the authors">
+  <meta name="author" content="Our writers and correspondents">
+
+  <!-- Mobile Specific Metas -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- FONT -->
+  <link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="./normalize.css">
+  <link rel="stylesheet" href="./skeleton.css">
+
+  <!-- Favicon -->
+
+  <!--  Scripts -->
+  
+</head>
+
+
+<body>
+
+<!-- Primary Page Layout -->
+  
+<div class="container">
+  
+ <!-- Header -->
+    <div class="row">
+		
+      <div class="twelve columns" style="margin-top: 4%; text-align: center;">
+        You are here: <a href="./index.html">Home</a>  > <a href="./openbsd_local_mailserver.html">OpenBSD mail server: DNS</a></br>
+      </div class="twelve columns">
+      
+      <div class="twelve columns" style="margin-top: 3%; text-align: center;">
+	  <img src="./spacer.gif" height="30px"></br>
+	  <h4><b>No Hair Github Pages</b></h4>
+	  </div class="twelve columns">
+
+ 	</div class ="row">
+
+ <!-- End Header -->
+
+ <!-- Post body -->
+	<div class="row">
+	
+	  <div class="twelve columns" style="margin-top: 3%; text-align: center;">
+		<h5><b>Setting up a mailserver on OpenBSD 6.9: DNS</b></h5>
+	  </div class="twelve columns">
+
+	  <div class="twelve columns" style="margin-top: 3%; text-align: left;">
+
+<p>Setting up a local network mailserver for automated messages from network hosts:</p>
+
+<p>A. Introduction</p>
+
+<p>On my local network I have several hosts (small fanless appliances, etc.) which serve as firewalls, routers, web servers, reverse proxies, dns servers, and log servers. Instead of logging into each host and reviewing the daily mail alerts and logs, I decided to set up a box as a local mailserver to which each host can send mail and also to function as a certral log server. All of these network hosts are running <a href="https://man.openbsd.org/">OpenBSD</a> and are accessed by computers using OpenBSD or MacOS.</p>
+
+<p>The network is a local domain (example.local) with DNS for the domain provided both by unbound on dedicated DNS servers as well as local /etc/hosts in some cases.</p>
+	
+<p>The mail is accessed by ssh'ing into the mail server running OpenBSD and using <a href="https://man.openbsd.org/mail">mail</a> as included in the default install. Thunderbird can also be used on the MacOS hosts but I find ssh easier.</p>
+	
+<p>Configuration of the log server will be described in a subsequent post.</p>
+
+<p>In this configuration:</p>
+
+<p>° A static IP is used on all the servers and appliances.</p>
+
+<p>° Local network traffic is unencrypted. Encryption can be added (see below) after generation of local self-signed certificates.</p>
+
+<p>° DNS and reverse DNS are provided by redundant servers running OpenBSD and unbound.</p>
+
+<p>With all these criteria in mind, let's move on to DNS.</p>
+
+
+<p>B. DNS</p>
+
+<p>The examples here will concentrate on unbound on OpenBSD. We will configure a forwarding and caching DNS server for the network which uses DNS over TLS to communicate with the external authoritative DNS servers. Here, the local domain is "example.local."
+	
+<p>The config file for unbound is found at /var/unbound/etc/unbound.conf:</p>
+
+<pre><code># $OpenBSD: unbound.conf,v 1.7 2016/03/30 01:41:25 sthen Exp $
+# Modified 3/8/22 for fw by gsb
+
+server:
+	# listening/incoming interfaces
+	interface: 127.0.0.1
+	interface: 10.1.1.1
+	#interface: 127.0.0.1@5353	# listen on alternative port
+	#interface: ::1
+	do-ip6: no
+
+	# override the default "any" address to send queries; if multiple
+	# addresses are available, they are used randomly to counter spoofing
+	outgoing-interface: x.x.x.x
+	#outgoing-interface: 2001:db8::53
+
+	cache-max-ttl: 14400
+	cache-min-ttl: 900
+	minimal-responses: yes
+	prefetch: yes
+	rrset-roundrobin: yes
+	use-caps-for-id: yes
+	verbosity: 1
+	#verbosity: 3
+	use-syslog: yes
+	#logfile: /log/unbound.log
+	log-servfail: yes
+
+	access-control: 0.0.0.0/0 refuse
+	access-control: 127.0.0.0/8 allow
+	access-control: 10.1.1.0/24 allow
+	access-control: ::0/0 refuse
+	#access-control: ::1 allow
+
+	root-hints: "/var/unbound/etc/named.cache"
+
+	hide-identity: yes
+	hide-version: yes
+
+	# Uncomment to enable qname minimisation.
+	# https://tools.ietf.org/html/draft-ietf-dnsop-qname-minimisation-08
+	#
+	qname-minimisation: yes
+	
+	# Uncomment to enable DNS over TLS (along with changing forward-addr's)
+	#
+	tls-upstream: yes
+	tls-cert-bundle: "/etc/ssl/cert.pem"
+
+	# Uncomment to enable DNSSEC validation.
+	#
+	#auto-trust-anchor-file: "/var/unbound/db/root.key"
+
+	# Enforce privacy of these addresses. Strips them away from answers.  It may
+	# cause DNSSEC validation to additionally mark it as bogus.  Protects against
+	# 'DNS Rebinding' (uses browser as network proxy).  Only 'private-domain' and
+	# 'local-data' names are allowed to have these private addresses. No default.
+	
+	private-address: 10.1.1.0/24
+
+	# Serve zones authoritatively from Unbound to resolver clients.
+	# Not for external service.
+	#
+	#local-zone: "local." static
+	#local-data: "mycomputer.local. IN A 192.0.2.51"
+	#local-zone: "2.0.192.in-addr.arpa." static
+	#local-data-ptr: "192.0.2.51 mycomputer.local"
+
+	# example.local
+	local-zone: "example.local." static
+
+	local-data: "fw.example.local. IN A 10.1.1.1"
+	local-data: "primo.example.local. IN A 10.1.1.2"
+	local-data: "canon.example.local. IN A 10.1.1.6"
+	local-data: "secundum.example.local. IN A 10.1.1.9"
+
+	local-zone: "1.1.10.in-addr.arpa" static
+
+	local-data-ptr: "10.1.1.1 fw.example.local"
+	local-data-ptr: "10.1.1.2 primo.example.local"
+	local-data-ptr: "10.1.1.9 secundum.example.local"
+
+	# example.com for web server
+	local-zone: "example.com." transparent
+ 	local-data: "www.example.com. IN A 10.1.1.2"
+	local-data: "example.com. IN A 10.1.1.2"
+	local-data: "www.example.com. CAA 0 issue letsencrypt.org"
+	
+	local-data-ptr: "10.1.1.2 www.example.com"
+	local-data-ptr: "10.1.1.2 example.com"
+
+	# UDP EDNS reassembly buffer advertised to peers. Default 4096.
+	# May need lowering on broken networks with fragmentation/MTU issues,
+	# particularly if validating DNSSEC.
+	#
+	#edns-buffer-size: 1480
+
+	# Use TCP for "forward-zone" requests. Useful if you are making
+	# DNS requests over an SSH port forwarding.
+	#
+	#Btcp-upstream: yes
+
+	# DNS64 options, synthesizes AAAA records for hosts that don't have
+	# them. For use with NAT64 (PF "af-to").
+	#
+	#module-config: "dns64 validator iterator"
+	#dns64-prefix: 64:ff9b::/96	# well-known prefix (default)
+	#dns64-synthall: no
+
+    # Required modules for RPZ
+    module-config: "respip validator iterator"
+
+rpz:
+    name: "unbound-adblock"
+    zonefile: "/var/unbound/db/adblock.rpz"
+    rpz-log: no
+    rpz-log-name: "unbound-adblock"
+
+remote-control:
+	control-enable: yes
+	control-use-cert: no
+	control-interface: 127.0.0.1
+	#Previous config
+	#control-interface: /var/run/unbound.sock
+
+# Use an upstream forwarder (recursive resolver) for specific zones.
+# Example addresses given below are public resolvers valid as of 2014/03.
+#
+
+forward-zone:
+	name: "."				# use for ALL queries
+#	forward-first: yes			# try direct if forwarder fails
+
+# For DNS over TLS
+	forward-tls-upstream: yes
+
+	forward-addr: 1.1.1.1@853
+	forward-addr: 1.0.0.1@853
+	forward-addr: 149.112.112.112@853
+	forward-addr: 9.9.9.9@853
+
+# For standard unencrypted DNS
+#	forward-addr: 192.168.1.254  #local ATT router
+
+#	forward-addr: 176.103.130.130 #AdGuard DNS
+#	forward-addr: 176.103.130.131 #Adguard DNS
+#	forward-addr: 1.1.1.1        # Cloudflare
+#	forward-addr: 1.0.0.1        # Cloudflare
+#	forward-addr: 23.253.163.53  # AlternateDNS
+#	forward-addr: 198.100.242.72 # AlternateDNS
+#	forward-addr: 208.67.220.220 # OpenDNS
+#	forward-addr: 208.67.222.222 # OpenDNS</code></pre>
+
+<p>Here, fw happens to be a firewall and dns server, primo is a webserver and dns server, and secundum is the mailserver and logserver.
+	
+<p>[I also have /etc/hosts on all the appliances containing the ips of the host with static ips, such as:</p>
+	
+<pre><code>127.0.0.1       localhost
+::1             localhost
+10.1.1.1        fw.example.local fw
+
+10.1.1.2        primo.example.local primo
+10.1.1.9        secundum.example.local secundum</code></pre>
+
+<p>and similarly for the other servers in the network.</p>
+
+<p>This is actually left over from prior setups. You can go either with DNS servers ot /etc/hosts. I adopted the DNS servers so I could run <a href="https://www.geoghegan.ca/unbound-adblock.html">unbound-adblock</a>, a pi-hole type ad blocker based on unbound.]</p>
+
+
+<p>C. Set up users.<p>
+	
+<p> You can use virtual users but given that these servers have only a limited number of users (usually root and one other), it's easier to have every mail user have an actual account on the mail host. I my case, each server has a root user (which cannot be logged into except via serial console) and the administrator who is also a member of the wheel group who performs privileged tasks using doas. It is not necessary that the admin user have the same name on all the servers.</p>
+	
+
+<p>D. Configuration of OpenSMTPD - network host or server:</p>
+
+<p>/etc/mail/smtpd/conf:</p>
+
+<pre><code># $OpenBSD: smtpd.conf,v 1.14 2019/11/26 20:14:38 gilles Exp $
+# Modified 3/1/22 by g
+
+# This is the smtpd server system-wide configuration file.
+# See smtpd.conf(5) for more information.
+
+table aliases file:/etc/mail/aliases
+
+listen on socket
+
+# To accept external mail, replace with: listen on all
+#
+listen on lo0
+
+action "local_mail" mbox alias <aliases>
+action "outbound" relay host smtp://secundum.example.local
+
+# Uncomment the following to accept external mail for domain "example.org"
+#
+# match from any for domain "example.org" action "local_mail"
+
+# Local mail actions for local users
+match from local for local action "local_mail"
+match from local for any action "outbound"</code></pre>
+
+
+<p>/etc/mail/aliases:</p>
+
+<pre><code># $OpenBSD: aliases,v 1.68 2020/01/24 06:17:37 tedu Exp $
+
+# Basic system aliases -- these MUST be present
+MAILER-DAEMON: postmaster
+postmaster: primoadmin
+
+# General redirections for important pseudo accounts
+daemon: root
+ftp-bugs: root
+operator: root
+www:    root
+...
+# Well-known aliases -- these should be filled in!
+root:           primoadmin, admin@secundum.example.local
+manager:        root
+dumper:         root
+
+# RFC 2142: NETWORK OPERATIONS MAILBOX NAMES
+abuse:          root
+# noc:          root
+security:       root
+
+# RFC 2142: SUPPORT MAILBOX NAMES FOR SPECIFIC INTERNET SERVICES
+# hostmaster:   root
+# usenet:       root
+# news:         usenet
+webmaster:      primoadmin
+# ftp:          root
+
+# Aliases for unprivileged users:
+primoadmin:     primoadmin</code></pre>
+
+<p>You can use .forward to send mail intended for local root to your admin user. It's easier just to use aliases because all the configuration is in one file. The line for root:</p>
+
+<pre><code>root:   primoadmin, admin@secundum.example.local</code></pre>
+
+<p>sends the message to the local admin mailbox and to the network admin mailbox on the mail server. This is for backup in case of network errors (or inadvertant bone-heaed deletion). Also, it may be useful to have a local copy when you are working on the host.</p>
+	
+
+<p>E. Configuration of OpenSMTPD - network mail server:</p>
+
+<p>/etc/mail.smtpd.conf:</p>
+
+<pre><code># $OpenBSD: smtpd.conf,v 1.14 2019/11/26 20:14:38 gilles Exp $
+Modified 3/1/22 by g
+
+# This is the smtpd server system-wide configuration file.
+# See smtpd.conf(5) for more information.
+
+table aliases file:/etc/mail/aliases
+table domains file:/etc/mail/domains
+
+listen on socket
+
+# To accept external mail, replace with: listen on all
+#
+#listen on lo0
+listen on all hostname "secundum.baskin.local"
+
+action "local_mail" mbox alias <aliases>
+action "domain_mail" mbox alias <aliases>
+action "outbound" relay
+
+# Uncomment the following to accept external mail for domain "example.org"
+#
+#match from any for domain "example.com" action "local_mail"
+
+match from local for local action "local_mail"
+match from any for domain <domains> action "domain_mail"
+match from local for any action "outbound"</code></pre>
+
+
+<p>/etc/mail/aliases:</p>
+
+<pre><code># $OpenBSD: aliases,v 1.68 2020/01/24 06:17:37 tedu Exp $
+
+# Basic system aliases -- these MUST be present
+MAILER-DAEMON: postmaster
+postmaster: admin
+
+# General redirections for important pseudo accounts
+daemon: root
+ftp-bugs: root
+operator: root
+www:    root
+...
+# Well-known aliases -- these should be filled in!
+root:           admin
+# manager:      root
+# dumper:       root
+
+# RFC 2142: NETWORK OPERATIONS MAILBOX NAMES
+abuse:          root
+# noc:          root
+security:       root
+
+# RFC 2142: SUPPORT MAILBOX NAMES FOR SPECIFIC INTERNET SERVICES
+# hostmaster:   root
+# usenet:       root
+# news:         usenet
+# webmaster:    root
+# ftp:          root
+
+# Other aliases
+admin:          admin
+admin@example.local:     admin
+admin@secundum.example.local: admin</code></pre>
+
+
+<p>/etc/mail/domains:</p>
+
+<pre><code>example.local
+*.example.local
+primo.example.local
+fw.example.local</code></pre>
+
+
+<p>F. PF configuration - network server/host:</p>
+
+<p>/etc/pf.conf:</p>
+
+<pre><code># $OpenBSD: pf.conf,v 1.55 2017/12/03 20:40:04 sthen Exp $
+# Modified 1/11/22 by g for primo
+...
+## Macros
+
+# Local network ranges
+lan = "10.1.1.0/24"
+...
+## Rules for external interface
+
+## Allowed outgoing traffic
+pass out on $ext_if inet proto tcp to $lan port smtp
+...</code></pre>
+
+
+<p>G. PF configuration - network mail server:</p>
+
+<p>/etc/pf.conf:</p>
+
+<pre><code># $OpenBSD: pf.conf,v 1.55 2017/12/03 20:40:04 sthen Exp $
+# Modified 3/8/22 by gsb for secundum
+...
+## Macros
+
+lan = "10.1.1.0/24"
+...
+## Rules for External interface
+
+## Inbound traffic
+...
+# Pass in mail from lan only
+pass in on $ext_if inet proto tcp from $lan to $ext_if port smtp
+...</code></pre>
+
+
+<p>H. Check configuration and restart smtpd:</p>
+
+<pre><code>doas smtpd -nf /etc/mail/smtpd.conf
+doas pfctl -nf /etc/pf.conf
+doas rcctl restart smtpd
+doas pfctl -f /etc/pf.conf</code></pre>
+
+
+<p>I. Check if it's working by sending messages from a local user on a network host to a domain address:</p>
+
+<pre><code>mail -s "Test mail from local user" john@example.com
+John,
+This might work.
+Pace
+ctrl-d</code></pre>
+
+<p>Check if the mail is received on the mail server.</p>
+
+<p></br></p>
+
+<p>Posted by Gordon, No Hair Github Pages, March 10, 2022</p>
+
+<p>&copy;the author</p>
+
+	  </div class="twelve columns">
+    
+	</div class="row">
+
+ <!-- End Post body -->
+
+ <!-- Footer --> 
+	<div class="row">
+      <div class="twelve columns" style="text-align: center;">
+		<p>For comments, corrections, and addenda, email: sudogeek[AT]gmail.com</p>
+		<p><a href="./index.html">Github Pages index</a></p></br>
+	  </div class="twelve columns">
+	</div class="row">
+    
+ <!-- End Footer -->
+
+  </div class="container">
+
+<!-- End Document -->
+
+</body>
+</html>
