@@ -59,14 +59,14 @@
 	  <div class="twelve columns" style="margin-top: 3%; text-align: left;">
 
 
-<p>Setting up a loghost for OpenBSD using syslogd.</p>
+<p><b>Setting up a loghost for OpenBSD using syslogd.</b></p>
 
 <p>This set of HowTo's will describe configuring a local loghost and clients using standard syslogd on OpenBSD. This works adequately but, since OpenBSD 7.0, packages of newer versions of syslog-ng are available and you may wish to use that. However, if you're dealing with a host which only has syslog, then it's still usable.<p>
 
 <p>For troubleshooting, we will first enable insecure mode (unencrypted logging to the loghost). Then, we will change to secure mode with TLS. Also, we show how multiple hosts and specific logs can be captured by the loghost.</p>
 
 
-<p>A. Set up DNS:<p>
+<p><b>A. Set up DNS:</b><p>
 	
 <p>Ensure that forward and reverse DNS for both log host and log client work, either using /etc/hosts or a local DNS server. If you don't want to do this, you can hard-code the ip adresses to the clients and servers and ignore the DNS infrastructure.</p>
 
@@ -81,9 +81,9 @@
 10.1.1.254  fw.example.local fw</code></pre>
 
 
-<p>B. Simple insecure mode for basic setup and testing:</p>
+<p><b>B. Simple insecure mode for basic setup and testing:</b></p>
 
-<p>1.Client machine (network host, in this example primo.example.local):</p>
+<p><b>1.Client machine (network host, in this example primo.example.local):</b></p>
 
 <p>a. Edit syslog.conf:</p>
 
@@ -121,7 +121,7 @@ doas pfctl -f /etc/pf.conf</code></pre>
 <p>If you see packets going out, move on to the loghost.</p>
 
 
-<p>2. Loghost (log server)</p>
+<p><b>2. Loghost (log server)<b></p>
 
 <p>a. Create destination directory and logfiles for incoming logs:</p>
 
@@ -176,8 +176,7 @@ doas pfctl -f /etc/pf.conf</code></pre>
 <pre><code>doas tail -f /var/log/primo/example.log</code></pre>
 
 
-
-<p>C. Using separate log files on loghost for different processes running on client.</p>
+<p><b>C. Using separate log files on loghost for different processes running on client.</b></p>
 
 <p>Now, the basic set up funnels all the logs into one big file which is not very useful. You can set up separate logs for unbound, relayd, httpd, etc. on the loghost.</p>
 
@@ -237,6 +236,8 @@ touch /var/log/primo/relayd.log.0.gz</code></pre>
 
 <p>and so on. Look at the default syslog.conf and the examples in the syslog.conf man page to add in blocks, send some logs to /dev/null, or even relay to another loghost.</p>
 
+<p><b>Next, setting up relote logging over tcp.</b></p>
+
 <p></br></p>
 
 <p>Posted by Gordon, No Hair Github Pages, March 10, 2022</p>
@@ -265,5 +266,3 @@ touch /var/log/primo/relayd.log.0.gz</code></pre>
 
 </body>
 </html>
-
-
