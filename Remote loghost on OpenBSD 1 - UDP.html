@@ -1,0 +1,269 @@
+<html lang="en">
+
+<head>
+
+  <!-- Basic Page Needs -->
+  <meta charset="utf-8">
+  <title>No Hair Github Pages: Remote loghost on OpenBSD: 1. Using UDP</title>
+  <meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+  <meta name="generator" content="GSB">
+  <meta name="description" content="Various items of interest to the authors">
+  <meta name="author" content="Our writers and correspondents">
+
+  <!-- Mobile Specific Metas -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- FONT -->
+  <link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="./normalize.css">
+  <link rel="stylesheet" href="./skeleton.css">
+
+  <!-- Favicon -->
+
+  <!--  Scripts -->
+  
+</head>
+
+
+<body>
+
+<!-- Primary Page Layout -->
+  
+<div class="container">
+  
+ <!-- Header -->
+    <div class="row">
+		
+      <div class="twelve columns" style="margin-top: 4%; text-align: center;">
+        You are here: <a href="./index.html">Home</a>  > <a href="./loghost_1_udp.html">Set up a network loghost over udp</a></br>
+      </div class="twelve columns">
+      
+      <div class="twelve columns" style="margin-top: 3%; text-align: center;">
+	  <img src="./spacer.gif" height="30px"></br>
+	  <h4><b>No Hair Github Pages</b></h4>
+	  </div class="twelve columns">
+
+ 	</div class ="row">
+
+ <!-- End Header -->
+
+ <!-- Post body -->
+	<div class="row">
+	
+	  <div class="twelve columns" style="margin-top: 3%; text-align: center;">
+		<h5><b>Set up a network loghost with OpenBSD: 1. UDP</b></h5>
+	  </div class="twelve columns">
+
+	  <div class="twelve columns" style="margin-top: 3%; text-align: left;">
+
+
+<p>Setting up a loghost for OpenBSD using syslogd.</p>
+
+<p>This set of HowTo's will describe configuring a local loghost and clients using standard syslogd on OpenBSD. This works adequately but, since OpenBSD 7.0, packages of newer versions of syslog-ng are available and you may wish to use that. However, if you're dealing with a host which only has syslog, then it's still usable.<p>
+
+<p>For troubleshooting, we will first enable insecure mode (unencrypted logging to the loghost). Then, we will change to secure mode with TLS. Also, we show how multiple hosts and specific logs can be captured by the loghost.</p>
+
+
+<p>A. Set up DNS:<p>
+	
+<p>Ensure that forward and reverse DNS for both log host and log client work, either using /etc/hosts or a local DNS server. If you don't want to do this, you can hard-code the ip adresses to the clients and servers and ignore the DNS infrastructure.</p>
+
+<p>In its simplest form, add an /etc/hosts to each loghost and client:</p>
+
+<pre><code>#/etc/hosts
+
+10.1.1.1  dns1.example.local dns1
+10.1.1.2  dns2.example.local dns2
+10.1.1.3  primo.example.local primo
+10.1.1.4  secundum.example.local secundum
+10.1.1.254  fw.example.local fw</code></pre>
+
+
+<p>B. Simple insecure mode for basic setup and testing:</p>
+
+<p>1.Client machine (network host, in this example primo.example.local):</p>
+
+<p>a. Edit syslog.conf:</p>
+
+<p>For testing, you will initially send all logs to see if the forwarding set up is working.</p>
+	
+<p>Add to the top of syslog.conf:</p>
+
+<pre><code>...
+# Send all logs to loghost
+*.*			@secundum.example.local
+#
+...</code></pre>
+
+<p>b. Restart syslogd on client (we will be using the -4 flag as we only run IPv4 on the internal network):
+
+<pre><code>doas rcctl set syslogd flags "-4"
+doas rcctl restart syslogd</code></pre>
+
+<p>c. Editing pf.conf to pass and log outgoing packets:</p> 
+
+<pre><code>...
+pass out log (all) on $ext_if inet proto udp from $ext_if to $ip.addr.of.loghost port 514
+...</code></pre>
+
+<p>Reload new pf.conf.</p>
+<pre><code>doas pfctl -nf -/etc/pf.conf
+doas pfctl -f /etc/pf.conf</code></pre>
+
+<p>d. Testing</p>
+
+<p>Check pflog to see if there are packets outbound:</p>
+
+<pre><code>doas tcpdump -n -e -ttt -r /var/log/pflog</code></pre>
+
+<p>If you see packets going out, move on to the loghost.</p>
+
+
+<p>2. Loghost (log server)</p>
+
+<p>a. Create destination directory and logfiles for incoming logs:</p>
+
+<pre><code>doas mkdir /var/log/primo
+touch /var/log/primo/example.log
+touch /var/log/primo/example.log.0.gz</code></pre>
+
+<p>Check that they are owned by root:wheel abd have permissions 0640.</p>
+
+<p>b. Edit newsyslog.conf:</p>
+
+<p>This is a bit different (and simpler) than on the client remembering the process generating the logs is not running on the loghost.</p>
+
+<pre><code>...
+# Added remote logs
+/var/log/primo/example.log 		640  2  300 *  Z 
+...</code></pre>
+
+<p>c. Edit syslog.conf:</p>
+
+<p>Add to syslog.conf:</p>
+
+<pre><code>...
+# Write logs coming from host primo to a separate file.
+++primo.example.local
+*.*                                /var/log/primo/example.log
++*
+#
+...</code></pre>
+
+<p>d. Restart syslogd on loghost with appropriate flags: -u (set insecure mode) and -4 (use IPv4 only). So:</p>
+
+<pre><code>doas rcctl set syslogd flags "-4 -u"
+doas rcctl restart syslogd</code></pre>
+
+<p>e. Edit /etc/pf.conf to allow log messages in:</p>
+
+<pre><code>...
+pass in log (all) on $ext_if inet proto udp from $ip.addr.of.client to $ext_if port 514
+...</code></pre>
+
+<p>Reload new pf.conf.</p>
+<pre><code>doas pfctl -nf -/etc/pf.conf
+doas pfctl -f /etc/pf.conf</code></pre>
+
+<p>f. Testing<p>
+
+<pre><code>doas tcpdump -n -e -ttt -r /var/log/pflog</code></pre>
+
+<p>If you see packets coming in, move on to checking the log.</p>
+
+<pre><code>doas tail -f /var/log/primo/example.log</code></pre>
+
+
+
+<p>C. Using separate log files on loghost for different processes running on client.</p>
+
+<p>Now, the basic set up funnels all the logs into one big file which is not very useful. You can set up separate logs for unbound, relayd, httpd, etc. on the loghost.</p>
+
+<p>1. First, create the new log files:</p>
+
+<pre><code>touch /var/log/primo/unbound.log
+touch /var/log/primo/unbound.log.0.gz</code></pre>
+touch /var/log/primo/relayd.log</code></pre>
+touch /var/log/primo/relayd.log.0.gz</code></pre>
+
+<p>Again, check if they are owned by root:wheel and permissions are 0640 or 0644.</p>
+
+<p>2. Edit newsyslog.conf:</p>
+
+<p>Similar to above:</p>
+
+<pre><code>...
+# Added remote logs
+/var/log/primo/example.log 		640  2  300 *  Z 
+/var/log/primo/unbound.log 		640  2  300 *  Z 
+/var/log/primo/relayd.log 		640  2  300 *  Z 
+...</code></pre>
+
+<p>3. Edit syslog.conf:</p>
+
+<p>In the block between "++" and "+*" you can add blocks just like in the main syslog.conf.</p>
+
+<p>Change syslog.conf:</p>
+
+<pre><code>...
+# Write logs coming from host primo to a separate file.
+++primo.example.local
+*.*                                /var/log/primo/example.log
++*
+#
+...</code></pre>
+
+<p>to:</p>
+
+<p>c. Edit syslog.conf:</p>
+
+<p>Here, we will break out log entries from unbound and relayd to to seoarate files while all the rest will still go to one catch-all file. Add to syslog.conf:</p>
+
+<pre><code>...
+# Write logs coming from host primo to a separate file.
+++primo.example.local
+!!unbound
+*.*                                /var/log/primo/unbound.log
+!*
+!!relayd
+*.*                                /var/log/primo/relayd.log
+!*
+*.*                                /var/log/primo/example.log
++*
+#
+...</code></pre>
+
+<p>and so on. Look at the default syslog.conf and the examples in the syslog.conf man page to add in blocks, send some logs to /dev/null, or even relay to another loghost.</p>
+
+<p></br></p>
+
+<p>Posted by Gordon, No Hair Github Pages, March 10, 2022</p>
+
+<p>&copy;the author</p>
+
+	  </div class="twelve columns">
+    
+	</div class="row">
+
+ <!-- End Post body -->
+
+ <!-- Footer --> 
+	<div class="row">
+      <div class="twelve columns" style="text-align: center;">
+		<p>For comments, corrections, and addenda, email: sudogeek[AT]gmail.com</p>
+		<p><a href="./index.html">Github Pages index</a></p></br>
+	  </div class="twelve columns">
+	</div class="row">
+    
+ <!-- End Footer -->
+
+  </div class="container">
+
+<!-- End Document -->
+
+</body>
+</html>
+
+
