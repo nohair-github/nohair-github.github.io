@@ -1,0 +1,204 @@
+<html lang="en">
+
+<head>
+
+  <!-- Basic Page Needs -->
+  <meta charset="utf-8">
+  <title>No Hair Github Pages: Remote loghost on OpenBSD: 2. Using TCP</title>
+  <meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+  <meta name="generator" content="GSB">
+  <meta name="description" content="Various items of interest to the authors">
+  <meta name="author" content="Our writers and correspondents">
+
+  <!-- Mobile Specific Metas -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- FONT -->
+  <link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="./normalize.css">
+  <link rel="stylesheet" href="./skeleton.css">
+
+  <!-- Favicon -->
+
+  <!--  Scripts -->
+  
+</head>
+
+
+<body>
+
+<!-- Primary Page Layout -->
+  
+<div class="container">
+  
+ <!-- Header -->
+    <div class="row">
+		
+      <div class="twelve columns" style="margin-top: 4%; text-align: center;">
+        You are here: <a href="./index.html">Home</a>  > <a href="./loghost_1_tcp.html">Set up a network loghost over udp</a></br>
+      </div class="twelve columns">
+      
+      <div class="twelve columns" style="margin-top: 3%; text-align: center;">
+	  <img src="./spacer.gif" height="30px"></br>
+	  <h4><b>No Hair Github Pages</b></h4>
+	  </div class="twelve columns">
+
+ 	</div class ="row">
+
+ <!-- End Header -->
+
+ <!-- Post body -->
+	<div class="row">
+	
+	  <div class="twelve columns" style="margin-top: 3%; text-align: center;">
+		<h5><b>Set up a network loghost with OpenBSD: 1. TCP</b></h5>
+	  </div class="twelve columns">
+
+	  <div class="twelve columns" style="margin-top: 3%; text-align: left;">
+
+
+<p><b>D. Insecure logging over TCP:</b></p>
+
+<p>There's no advantage to using tcp versus udp for insecure logging. It's only useful to get this set as an example and to troubleshoot since, in the next stage, we will be usng syslogd-tls which runs (typically) on tcp.</p>
+
+<p><b>1. Loghost (log server)</b></p>
+
+<p>Changes are:</p>
+
+<p>a. Edit syslog.conf:</p>
+
+<p>No changes to syslog.conf:</p>
+
+<pre><code>...
+# Write logs coming from host primo to a separate file.
+++primo.example.local
+*.*                                /var/log/primo/example.log
++*
+#
+...</code></pre>
+
+<p>No changes to syslog.conf. The logs are sorted by hostname which does not change when changing from upd to tcp. As an aside, you can use the short hostname "primo" instead.</p>
+
+<p>b. Restart syslogd on loghost with appropriate flags. Flags required are:</p>
+
+<p>-a ( -a path: Specify a location where syslogd should place an additional log socket) and</p>
+
+<p>-T listen_address (-T listen_address: Create a TCP listen socket for receiving messages and bind it to the specified address. There is no well-known port for syslog over TCP, so a port number must be specified using the host:port syntax).
+
+<p>No "-4" flag is used as that is only for udp. When messages are sent from the client, the destination address will be ip.addr.of.loghost:6514 but the source address will be varying ports of ip.addr.of.client. So:</p>
+
+<pre><code>doas rcctl set syslogd flags "-a ip.addr.of.client:* -T ip.addr.of.loghost:6514"
+doas rcctl restart syslogd</code></pre>
+
+<p>Notice the "*" to match any source port.</p>
+
+<p>c. Edit /etc/pf.conf to allow log messages in:</p>
+
+<pre><code>...
+pass in log (all) on $ext_if inet proto tcp from $ip.addr.of.client to $ext_if port 6514
+...</code></pre>
+
+<p>Reload new pf.conf.</p>
+<pre><code>doas pfctl -nf -/etc/pf.conf
+doas pfctl -f /etc/pf.conf</code></pre>
+
+<p>d. Testing<p>
+
+<p>Check /var/log/messages for errors. Check if a listen port and socket are created:</p>
+
+<pre><code>netstat -a | grep 6514
+netstat -a | grep ip.addr.of.client</code></p>
+
+
+<p><b>2.Client machine (network host):</b></p>
+
+<p>a. Edit syslog.conf:</p>
+
+<p>For testing, you will initially send all logs to see if the forwarding set up is working.</p>
+	
+<p>Change the stanza at the top of syslog.conf to:</p>
+
+<pre><code>...
+# Send all logs to loghost
+*.*			@tcp4://secundum.example.local:6154
+#
+...</code></pre>
+
+<p>or:</p>
+
+<pre><code>...
+# Send all logs to loghost
+*.*			@tcp4://ip.addr.of.loghost:6154
+#
+...</code></pre>
+
+<p>As above, "tcp" sets the protocol and "4" sets IPv4. There is no default tcp port for syslogd so a port must be specified. In this example, we'll use 6154. You can use either the hostname or IP address of the loghost. Both work, but using the ip address may be a hair faster as it obviates a DNS lookup.</p>
+
+<p>Restart syslogd on client (no flags are needed; "-4" only applies to udp):
+
+<pre><code>doas rcctl set syslogd flags ""
+doas rcctl restart syslogd</code></pre>
+
+<p>b. Editing pf.conf to pass and log outgoing packets:</p> 
+
+<pre><code>...
+pass out log (all, to pflog0) on $ext_if inet proto tcp from $ext_if to $ip.addr.of.loghost port 6514
+...</code></pre>
+
+<p>Reload new pf.conf.</p>
+<pre><code>doas pfctl -nf -/etc/pf.conf
+doas pfctl -f /etc/pf.conf</code></pre>
+
+<p>c. Testing</p>
+
+<p>Check pflog to see if there are packets outbound:</p>
+
+<pre><code>doas tcpdump -n -e -ttt -r /var/log/pflog</code></pre>
+
+<p>If you see packets going out, move back to the loghost.</p>
+
+
+<p>3. Monitoring the loghost:</p>
+
+<p>Check traffic through firewall:</p>
+
+<pre><code>doas tcpdump -n -e -ttt -r /var/log/pflog</code></pre>
+
+<p>If you see packets coming in, move on to checking the log.</p>
+
+<pre><code>doas tail -f /var/log/primo/example.log</code></pre>
+
+<p>Next, setting up remote logging over tls (pending).</p>
+
+<p></br></p>
+
+<p>Posted by Gordon, No Hair Github Pages, March 10, 2022</p>
+
+<p>&copy;the author</p>
+
+	  </div class="twelve columns">
+    
+	</div class="row">
+
+ <!-- End Post body -->
+
+ <!-- Footer --> 
+	<div class="row">
+      <div class="twelve columns" style="text-align: center;">
+		<p>For comments, corrections, and addenda, email: sudogeek[AT]gmail.com</p>
+		<p><a href="./index.html">Github Pages index</a></p></br>
+	  </div class="twelve columns">
+	</div class="row">
+    
+ <!-- End Footer -->
+
+  </div class="container">
+
+<!-- End Document -->
+
+</body>
+</html>
+
+
