@@ -1,0 +1,299 @@
+<html lang="en">
+
+<head>
+
+  <!-- Basic Page Needs -->
+  <meta charset="utf-8">
+  <title>No Hair Github Pages: Remote loghost on OpenBSD: 2. Using TCP</title>
+  <meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+  <meta name="generator" content="GSB">
+  <meta name="description" content="Various items of interest to the authors">
+  <meta name="author" content="Our writers and correspondents">
+
+  <!-- Mobile Specific Metas -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- FONT -->
+  <link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="./normalize.css">
+  <link rel="stylesheet" href="./skeleton.css">
+
+  <!-- Favicon -->
+
+  <!--  Scripts -->
+  
+</head>
+
+
+<body>
+
+<!-- Primary Page Layout -->
+  
+<div class="container">
+  
+ <!-- Header -->
+    <div class="row">
+		
+      <div class="twelve columns" style="margin-top: 4%; text-align: center;">
+        You are here: <a href="./index.html">Home</a>  > <a href="./loghost_1_tcp.html">Set up a network loghost over udp</a></br>
+      </div class="twelve columns">
+      
+      <div class="twelve columns" style="margin-top: 3%; text-align: center;">
+	  <img src="./spacer.gif" height="30px"></br>
+	  <h4><b>No Hair Github Pages</b></h4>
+	  </div class="twelve columns">
+
+ 	</div class ="row">
+
+ <!-- End Header -->
+
+ <!-- Post body -->
+	<div class="row">
+	
+	  <div class="twelve columns" style="margin-top: 3%; text-align: center;">
+		<h5><b>Set up a network loghost with OpenBSD: 1. TCP</b></h5>
+	  </div class="twelve columns">
+
+	  <div class="twelve columns" style="margin-top: 3%; text-align: left;">
+
+
+		  <p><b>E. Encrypted (but insecure) logging over TLS</b></p>
+	
+<p>Once we switch over to TLS, several defaults are available. syslogd-tls listens to port 6514 by default. On the client side, syslogd will validate (unless countermanded by the -V flag) the signing of loghost's certificate with a CA in /etc/ssl/cert.pem (default) or another CA if specified with the -C flag on the client.
+	
+<p>To quote from the syslogd man page:</p>
+	
+<p><blockquote>When sending syslog messages to a remote loghost via TLS, the server's certificate and hostname are validated to prevent malicious servers from reading messages. If the server has a certificate with a matching hostname signed by a CA in /etc/ssl/cert.pem, it is verified with that by default. If the server has a certificate with a matching hostname signed by a private CA, use the -C option and put that CA into CAfile. Validation can be explicitly turned off using the -V option. If the server is accepting messages only from clients with a trusted client certificate, use the -k and -c options to authenticate syslogd with this certificate.
+
+When receiving syslog messages from a TLS client, there must be a server key and certificate in /etc/ssl/private/host[:port].key and /etc/ssl/host[:port].crt. If the client uses certificates to authenticate, the CA of the client's certificate may be added to CAfile using the -K option to protect from messages being spoofed by malicious senders.</blockquote></p>
+
+<p>That's technically correct but as clear as mud. The way to think of it is that syslog-tls is like https. A random client connects with the (web)server and is offered a certificate signed by some CA. The client refers to its local certificate store (in the browser or, in the case of OpenBSD, in /etc/ssl/cert.pem) and if the (web)server's certificate is signed by a trusted CA, the TLS handshake proceeds. So let's run through it.</p>
+	
+<p><b>1. Certificates for loghost</b></p>
+
+<p>Initially, you will need certificates for the loghost. (Certificates for the clients will be used later (below) when we configure trusted clients.) The default is not to use certificates on the clients. This does allow random hosts to connect with the loghost so there is some chance of logs on the loghost being corrupted by a malicious or poorly configured client. However, the traffic from client to loghost will be encrypted. We will generate self-signed certificates which will be adequate since the syslog traffic is internal to the network. If, however, you want to use a remote loghost (in the DMZ or external to your network/in the 'cloud') and certificate validation, then bona fide certificates for a legit TLD signed by a recognized CA are recommended. You can get these from Let's Encrypt or from a commercial CA.</p>
+
+<p><b>a. Self-signed server/loghost certificates:</b></p>
+
+<p>This will be done on an OpenBSD 7.0 machine which serves as the loghost. We will create a local self-signed CA then a certificate:key pair for the loghost which is signed by our local self-signed CA.</p>
+
+<p>Create the local "root" CA which will be used to sign the server (loghost) and client certificates. First, create the CA key:</p>
+	
+<pre><code>doas openssl genrsa [-des3] -out /etc/ssl/private/example.local.CA.key 4096</code></pre>
+
+<p>If you include "-des3" you will be asked for a password to use the certificate subsequently. If you don't, just be sure the ley is kept safe. Now, let's create the local CA crt and self sign it:</p>
+
+<pre.<code>doas openssl req -x509 -new -nodes -key /etc/ssl/private/example.local.CA.key \
+-sha265 -days 1024 -out /etc/ssl/example.local.CA.crt</code></pre>
+
+<p>Now, let's create a certificate for the loghost secundum.example.local. First, the key:</p>
+
+<pre><code>doas openssl genrsa -out /etc/ssl/private/secundum.example.local.key 2048</code></pre>
+
+<p>Now, the csr:<p>
+	
+<pre><code>doas openssl req -new -sha256 \
+-key /etc/ssl/private/secundum.example.local.key \
+-subj "/C=US/ST=FL/O=example.local/CN=secundum.example.local" \
+-out /etc/ssl/secundum.example.local.csr</code></pre>
+
+<p>Now sign the csr with the local CA certificate:</p>
+
+<pre><code>doas openssl x509 -req -in /etc/ssl/secundum.example.local.csr \
+-CA /etc/ssl/example.local.CA.crt -CAkey /etc/ssl/private/example.local.CA.key \
+-CAcreateserial -out /etc/ssl/secundum.example.local.crt -days 365 -sha256</code></pre>
+
+<p>Check the contents of the certificate:</p>
+
+<pre><code>doas openssl x509 -n /etc/ssl/secundum.example.local.crt -test -noout</code></pre>
+
+<p>syslogd requires the certificates to be in PEM format. Luckily, if you examine the files created above, you will see they are blocks of base64 text preceded by "--------BEGIN CERTIFICATE ---------" so they are already PEM compatible.</p>
+
+<p>In this example, the port is not specified as we will be using the default port (6154) for syslog-tls. If an alternate port is used or the client and loghost are addressed by ip address, symbolic links to host:port.crt and host:port.key or ip.addr.og.loghost:port.crt and ip.addr.of.loghost:port.key are made.
+
+<p><b>b. Using Let's Encrypt or commercial CA:</b></p>
+
+<p>Here, you need to have a FQDN with a proper tld; example.local is not going to work. Further you need to either have a webserver running or a DNS server for the challenges. This is left as an exercise for the reader if the network requires this.</p>
+
+
+<p><b>2. Configure loghost:</b></p>
+
+<p><b>a. Symbolic links to certificates:</b><p>
+
+<p>If you are adressing the loghost by ip address (in the syslog.conf on the client), you need to make a symlink for the crt:kry pair.<p>
+
+<pre><code>doas ln -s /etc/ssl/secundum.example.local.crt /etc/ssl/ip.addr.of.loghost[:port].crt
+doas ln -s /etc/ssl/private/secundum.example.local.key /etc/ssl/private/ip.addr.of.loghost[:port].key</code></pre>
+
+<p>This is also necessary if using a port other than 6514.</p>
+
+<pre><code>doas ln -s /etc/ssl/secundum.example.local.crt /etc/ssl/secundum.example.local:6515.crt
+doas ln -s /etc/ssl/private/secundum.example.local.key /etc/ssl/private/secundum.example.local:6515.key</code></pre>
+
+<p></b>b. Edit /etc/syslog.conf</b></p>
+	
+<p>Again, no changes to syslog.conf to:</p>
+
+<pre><code>...
+# Write logs coming from host primo to a separate file.
+++primo.example.local
+*.*                        /var/log/primo/example.log
++*
+#
+...</code></pre>
+
+<p><b>c. Add flags to syslogd and restart:</b></p>
+	
+<p>Flags used are:</p>
+
+<p>-a (as above),</p>
+	
+<p>-S ( -S listen_address: Create a TLS listen socket for receiving encrypted messages and bind it to the specified address. A port number may be specified using the host:port syntax but this is optional if you are using the default port. The first listen_address is also used to find a suitable server key and certificate in /etc/ssl/).<p>
+	
+<pre><code>doas rcctl set syslog flags "-a ip.addr.of.client:* -S secundum.example.local"
+doas rcctl restart syslogd</code></pre>
+
+<p><b>d. Edit pf.conf:</b></p>
+
+<p>No changes are necessary:<p/>
+
+<pre><code># Pass in log from selected network hosts
+pass in log (all. on pflog0) on $ext_if inet from ip.addr.of.client to $ext_if port 6154</code></pre>
+
+<p>Check config and reload pf:</p>
+
+<pre><code>doas pfctl -nf -/etc/pf.conf
+doas pfctl -f /etc/pf.conf</code></pre>
+
+<p><b>e. Testing:</b></p>
+
+<p>Check if there is a port and socket listening:</p>
+
+<pre><code>netstat -a | grep 6514
+netstat -a | grep secundum
+netstat -a | grep ip.addr.of.client</code></p>
+
+
+<p><b>2. Configure client:</b></p>
+	
+<p><b>a. Move local CA certificate from loghost to client and place in /etc/ssl, check ownership is root:wheel and mode is 644.</b></p>
+
+<p>On loghost:</p>
+
+<pre><code>doas scp /etc/ssl/example.local.CA.crt ip.addr.of.client:/etc/ssl/</code></pre>
+
+<p>On client:</p>
+
+<pre><code>ls -al /etc/ssl/
+doas chown root:wheel /etc/ssl/example.local.CA.crt
+doas chmod 0644 /etc/ssl/example.local.CA.crt
+
+<p><b>b. On client then, edit /etc/syslog.conf:</b></p>
+
+<p>Current syslog.conf from TCP section previously:</p>
+
+<pre><code>...
+# Divert messages to /var/log/example.log
+*.*         @tcp4://secundum.example.local:6514
+#
+...</code></pre>
+
+<p>Change to:</p>
+
+<pre><code>...
+# Divert messages to /var/log/example.log
+*.*			@tls4://secundum.example.local
+#
+...</code></pre>
+
+<p><b>c. Set syslgd flags and restart syslogd:</b></p>
+
+<p>Flags used are:</p>
+
+<p>-C (C CAfile: PEM encoded file containing CA certificates used for certificate validation of a remote loghost; the default is /etc/ssl/cert.pem),</p>
+
+<p>and optionally -V ( -V: Do not perform remote server certificate and hostname validation when sending messages). This can be useful to debug problems with the tls handshake.</p>
+
+<pre><code>doas rcctl set syslog flags "-C /etc/ssl/example.local.CA.crt -V"
+doas rcctl restart syslogd</code></pre>
+
+<p><b>d. Edit pf.conf:</b></p>
+
+...</code></pre>
+# Pass out logs to loghost
+pass out log (all, to pflog0) on $ext_if inet from $ext_if to $loghost port 6514
+...</code></pre>
+
+<p>Check config and reload pf:</p>
+
+<pre><code>doas pfctl -nf -/etc/pf.conf
+doas pfctl -f /etc/pf.conf</code></pre>
+
+<p><b>e. Testing:</b></p>
+
+<p>Check for errors in /var/log/messages.</p>
+
+<p>Check pflog to see if there are packets outbound:</p>
+
+<pre><code>doas tcpdump -n -e -ttt -r /var/log/pflog</code></pre>
+
+<p>Now go back to the loghost and check for packets going in, then check for proper receipt by loghost.</p>
+
+<pre><code>tail -f /var/log/primo/example.log</code></pre>
+
+<p><b>f. now let's try it with certificate validation on the client:</b></p>
+
+<pre><code>doas rcctl set syslog flags "-C /etc/ssl/example.local.CA.crt"
+doas rcctl restart syslogd</code></pre>
+
+<p>Check for errors in /var/log/messages.</p>
+
+<p>Check pflog to see if there are packets outbound:</p>
+
+<pre><code>doas tcpdump -n -e -ttt -r /var/log/pflog</code></pre>
+
+<p>Now go back to the loghost and check for packets going in:</p>
+
+<pre><code>doas tcpdump -n -e -ttt -r /var/log/pflog</code></pre>
+
+<p>Then, check for proper receipt by loghost:</p>
+
+<pre><code>tail -f /var/log/primo/example.log</code></pre>
+
+<p>Also, now you can enable logging to multiple different logfile as explained in the first loghost HOWTO.<p>
+
+
+<p>Next, setting up secure logging over tls (pending).</p>
+
+<p></br></p>
+
+<p>Posted by Gordon, No Hair Github Pages, March 10, 2022</p>
+
+<p>&copy;the author</p>
+
+	  </div class="twelve columns">
+    
+	</div class="row">
+
+ <!-- End Post body -->
+
+ <!-- Footer --> 
+	<div class="row">
+      <div class="twelve columns" style="text-align: center;">
+		<p>For comments, corrections, and addenda, email: sudogeek[AT]gmail.com</p>
+		<p><a href="./index.html">Github Pages index</a></p></br>
+	  </div class="twelve columns">
+	</div class="row">
+    
+ <!-- End Footer -->
+
+  </div class="container">
+
+<!-- End Document -->
+
+</body>
+</html>
+
+
