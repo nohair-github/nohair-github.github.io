@@ -4,7 +4,7 @@
 
   <!-- Basic Page Needs -->
   <meta charset="utf-8">
-  <title>No Hair Github Pages: Remote loghost on OpenBSD: 2. Using TCP</title>
+  <title>No Hair Github Pages: Remote loghost on OpenBSD: 3. Using TLS</title>
   <meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
   <meta name="generator" content="GSB">
   <meta name="description" content="Various items of interest to the authors">
@@ -37,7 +37,7 @@
     <div class="row">
 		
       <div class="twelve columns" style="margin-top: 4%; text-align: center;">
-        You are here: <a href="./index.html">Home</a>  > <a href="./loghost_1_tcp.html">Set up a network loghost over udp</a></br>
+        You are here: <a href="./index.html">Home</a>  > <a href="./loghost_3_tls.html">Set up a network loghost over tls</a></br>
       </div class="twelve columns">
       
       <div class="twelve columns" style="margin-top: 3%; text-align: center;">
@@ -53,21 +53,21 @@
 	<div class="row">
 	
 	  <div class="twelve columns" style="margin-top: 3%; text-align: center;">
-		<h5><b>Set up a network loghost with OpenBSD: 1. TCP</b></h5>
+		<h5><b>Set up a network loghost with OpenBSD: 3. TLS</b></h5>
 	  </div class="twelve columns">
 
 	  <div class="twelve columns" style="margin-top: 3%; text-align: left;">
 
 
-		  <p><b>E. Encrypted (but insecure) logging over TLS</b></p>
+<p><b>E. Encrypted (but insecure) logging over TLS</b></p>
 	
 <p>Once we switch over to TLS, several defaults are available. syslogd-tls listens to port 6514 by default. On the client side, syslogd will validate (unless countermanded by the -V flag) the signing of loghost's certificate with a CA in /etc/ssl/cert.pem (default) or another CA if specified with the -C flag on the client.
 	
 <p>To quote from the syslogd man page:</p>
 	
-<p><blockquote>When sending syslog messages to a remote loghost via TLS, the server's certificate and hostname are validated to prevent malicious servers from reading messages. If the server has a certificate with a matching hostname signed by a CA in /etc/ssl/cert.pem, it is verified with that by default. If the server has a certificate with a matching hostname signed by a private CA, use the -C option and put that CA into CAfile. Validation can be explicitly turned off using the -V option. If the server is accepting messages only from clients with a trusted client certificate, use the -k and -c options to authenticate syslogd with this certificate.
+<p><blockquote>When sending syslog messages to a remote loghost via TLS, the server's certificate and hostname are validated to prevent malicious servers from reading messages. If the server has a certificate with a matching hostname signed by a CA in /etc/ssl/cert.pem, it is verified with that by default. If the server has a certificate with a matching hostname signed by a private CA, use the -C option and put that CA into CAfile. Validation can be explicitly turned off using the -V option. If the server is accepting messages only from clients with a trusted client certificate, use the -k and -c options to authenticate syslogd with this certificate.</blockquote></p>
 
-When receiving syslog messages from a TLS client, there must be a server key and certificate in /etc/ssl/private/host[:port].key and /etc/ssl/host[:port].crt. If the client uses certificates to authenticate, the CA of the client's certificate may be added to CAfile using the -K option to protect from messages being spoofed by malicious senders.</blockquote></p>
+<p><blockquote>When receiving syslog messages from a TLS client, there must be a server key and certificate in /etc/ssl/private/host[:port].key and /etc/ssl/host[:port].crt. If the client uses certificates to authenticate, the CA of the client's certificate may be added to CAfile using the -K option to protect from messages being spoofed by malicious senders.</blockquote></p>
 
 <p>That's technically correct but as clear as mud. The way to think of it is that syslog-tls is like https. A random client connects with the (web)server and is offered a certificate signed by some CA. The client refers to its local certificate store (in the browser or, in the case of OpenBSD, in /etc/ssl/cert.pem) and if the (web)server's certificate is signed by a trusted CA, the TLS handshake proceeds. So let's run through it.</p>
 	
@@ -132,6 +132,8 @@ doas ln -s /etc/ssl/private/secundum.example.local.key /etc/ssl/private/ip.addr.
 <pre><code>doas ln -s /etc/ssl/secundum.example.local.crt /etc/ssl/secundum.example.local:6515.crt
 doas ln -s /etc/ssl/private/secundum.example.local.key /etc/ssl/private/secundum.example.local:6515.key</code></pre>
 
+<p>In this default install we are using the hostname and the default port 6514, so this is not necessary.</p>
+
 <p></b>b. Edit /etc/syslog.conf</b></p>
 	
 <p>Again, no changes to syslog.conf to:</p>
@@ -173,7 +175,7 @@ doas pfctl -f /etc/pf.conf</code></pre>
 
 <pre><code>netstat -a | grep 6514
 netstat -a | grep secundum
-netstat -a | grep ip.addr.of.client</code></p>
+netstat -a | grep ip.addr.of.client</code></pre>
 
 
 <p><b>2. Configure client:</b></p>
