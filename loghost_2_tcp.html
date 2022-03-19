@@ -94,6 +94,11 @@ doas rcctl restart syslogd</code></pre>
 
 <p>Notice the "*" to match any source port.</p>
 
+<p>Or, you can address the targets by hostname if DNS is working:</p>
+
+<pre><code>doas rcctl set syslogd flags "-a primo.example.local:* -T secundum.example.local:6514"
+doas rcctl restart syslogd</code></pre>
+
 <p>c. Edit /etc/pf.conf to allow log messages in:</p>
 
 <pre><code>...
@@ -200,5 +205,3 @@ doas pfctl -f /etc/pf.conf</code></pre>
 
 </body>
 </html>
-
-
