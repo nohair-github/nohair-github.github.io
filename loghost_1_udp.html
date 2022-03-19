@@ -176,7 +176,94 @@ doas pfctl -f /etc/pf.conf</code></pre>
 <pre><code>doas tail -f /var/log/primo/example.log</code></pre>
 
 
-<p><b>C. Using separate log files on loghost for different processes running on client.</b></p>
+	
+<p><b>C. Simple insecure mode for basic setup and testing using IP addresses:</b></p>
+
+<p><b>1.Client machine (network host):</b></p>
+
+<p>a. Edit syslog.conf:</p>
+
+<p>For testing, you will initially send all logs to see if the forwarding set up is working.</p>
+	
+<p>Add to the top of syslog.conf:</p>
+
+<pre><code>...
+# Send all logs to loghost
+*.*			@ip.addr.of.loghost
+#
+...</code></pre>
+
+<p>b. Restart syslogd on client (we will be using the -4 flag as we only run IPv4 on the internal network):
+
+<pre><code>doas rcctl set syslogd flags "-4"
+doas rcctl restart syslogd</code></pre>
+
+<p>c. Editing pf.conf to pass and log outgoing packets: no changes here.</p> 
+
+<p>d. Testing</p>
+
+<p>Check pflog to see if there are packets outbound:</p>
+
+<pre><code>doas tcpdump -n -e -ttt -r /var/log/pflog</code></pre>
+
+<p>If you see packets going out, move on to the loghost.</p>
+
+
+<p><b>2. Loghost (log server)</b></p>
+
+<p>a. Log files: Refer to B. 2. a. above: no changes</p>
+
+<p>b. Edit newsyslog.conf: refer to B. 2. b. above: no changes.</p>
+
+<p>c. Edit syslog.conf:</p>
+
+<p>No changes from previous configuration:</p>
+
+<pre><code>...
+# Write logs coming from host primo to a separate file.
+++primo.example.local
+*.*                                /var/log/primo/example.log
++*
+#
+...</code></pre>
+
+<p>Note that the hostname of the sending client is still used, not the ip address. For OpenBSD, this is whatever is in /etc/myname on the client.<p>
+
+<p>d. Restart syslogd on loghost with appropriate flags:<p>
+	
+<p>-U (-U bind_address: Create a UDP socket for receiving messages and bind it to the specified address. This can be used, for example, with a pf divert-to rule to receive packets when syslogd is bound to localhost. A port number may be specified using the host:port syntax.)<p>
+
+<p>and -4 (use IPv4 only). -u is not needed. So:</p>
+
+<pre><code>doas rcctl set syslogd flags "-4 -U ip.addr.of.loghost"
+doas rcctl restart syslogd</code></pre>
+
+<p>Here, it will work as written. We do not have to specify the port nor create a socket because we are using the defaults of syslogd. To explicitly specify the connection you would write:</p>
+
+<pre><code>doas rcctl set syslogd flags "-4 -a ip.addr.of.client:514 -U ip.addr.of.loghost:514"</code></pre>
+
+<p>But you can get by with:<p>
+
+<pre><code>doas rcctl set syslogd flags "-4 -a ip.addr.of.client -U ip.addr.of.loghost:514"</code></pre>
+
+<p>or</p>
+
+<pre><code>doas rcctl set syslogd flags "-4 -a ip.addr.of.client -U ip.addr.of.loghost"</code></pre>
+
+<p>again, implicitly using the defaults for the socket specified in "-a" and "-U".</p>
+
+<p>e. Edit /etc/pf.conf: no changes here.</p>
+
+<p>f. Testing<p>
+
+<pre><code>doas tcpdump -n -e -ttt -r /var/log/pflog</code></pre>
+
+<p>If you see packets coming in, move on to checking the log.</p>
+
+<pre><code>doas tail -f /var/log/primo/example.log</code></pre>
+
+	
+<p><b>D. Using separate log files on loghost for different processes running on client.</b></p>
 
 <p>Now, the basic set up funnels all the logs into one big file which is not very useful. You can set up separate logs for unbound, relayd, httpd, etc. on the loghost.</p>
 
