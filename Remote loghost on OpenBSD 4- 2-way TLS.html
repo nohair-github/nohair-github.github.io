@@ -1,0 +1,219 @@
+<html lang="en">
+
+<head>
+
+  <!-- Basic Page Needs -->
+  <meta charset="utf-8">
+  <title>No Hair Github Pages: Remote loghost on OpenBSD: 4. Using TLD with client and loghost validation</title>
+  <meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+  <meta name="generator" content="GSB">
+  <meta name="description" content="Various items of interest to the authors">
+  <meta name="author" content="Our writers and correspondents">
+
+  <!-- Mobile Specific Metas -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- FONT -->
+  <link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="./normalize.css">
+  <link rel="stylesheet" href="./skeleton.css">
+
+  <!-- Favicon -->
+
+  <!--  Scripts -->
+  
+</head>
+
+
+<body>
+
+<!-- Primary Page Layout -->
+  
+<div class="container">
+  
+ <!-- Header -->
+    <div class="row">
+		
+      <div class="twelve columns" style="margin-top: 4%; text-align: center;">
+        You are here: <a href="./index.html">Home</a>  > <a href="./loghost_1_tcp.html">Set up secure remote loghost with client and host validation</a></br>
+      </div class="twelve columns">
+      
+      <div class="twelve columns" style="margin-top: 3%; text-align: center;">
+	  <img src="./spacer.gif" height="30px"></br>
+	  <h4><b>No Hair Github Pages</b></h4>
+	  </div class="twelve columns">
+
+ 	</div class ="row">
+
+ <!-- End Header -->
+
+ <!-- Post body -->
+	<div class="row">
+	
+	  <div class="twelve columns" style="margin-top: 3%; text-align: center;">
+		<h5><b>Set up a network loghost with OpenBSD: 4. Secure 2-way TLS</b></h5>
+	  </div class="twelve columns">
+
+	  <div class="twelve columns" style="margin-top: 3%; text-align: left;">
+
+
+<p><b>F. Secure logging over TLS using DNS/hostnames</b></p>
+
+<p>In this configuration, there will be a two-way tls handshake so client is validated by host and host is validated by client. This prevent rogue clients from writing to loghost.
+
+<p><b>1. Create certifcates for client and move to client:</b></p>
+
+<p>Now, let's create a certificate for the client primo.example.local. (This is done on loghost although any OpenBSD host could be used.) First, the key:</p>
+
+<pre><code>doas openssl genrsa -out /etc/ssl/private/primo.example.local.key 2048</code></pre>
+
+<p>Now, the csr:<p>
+	
+<pre><code>doas openssl req -new -sha256 \
+-key /etc/ssl/private/primo.example.local.key \
+-subj "/C=US/ST=FL/O=example.local/CN=primo.example.local" \
+-out /etc/ssl/primo.example.local.csr</code></pre>
+
+<p>Now sign the csr with the local CA certificate:</p>
+
+<pre><code>doas openssl x509 -req -in /etc/ssl/primo.example.local.csr \
+-CA /etc/ssl/example.local.CA.crt -CAkey /etc/ssl/private/example.local.CA.key \
+-CAcreateserial -out /etc/ssl/primo.example.local.crt -days 365 -sha256</code></pre>
+
+<p>Check the contents of the certificate:</p>
+
+<pre><code>doas openssl x509 -n /etc/ssl/secundum.example.local.crt -test -noout</code></pre>
+
+<p>Now move the the client crt and key to the client.</p>
+	
+
+<p><b>2. Configure loghost</b></p>
+
+<p>a. No changes to /etc/syslog.conf</p>
+
+<pre><code>...
+# Write logs coming from host primo to a separate file.
+++primo.example.local
+*.*                        /var/log/primo/example.log
++*
+#
+...</code></pre>
+
+<p><b>b. Add flags to syslogd and restart:</b></p>
+	
+<p>Flags used are:</p>
+
+<p>-a (as above),</p>
+	
+<p>-S (as above),<p>
+	
+<p>and -K (-K CAfile: PEM encoded file containing CA certificates used for client certificate validation on the local listen socket. By default incoming connections from any TLS client are allowed.)
+	
+<pre><code>doas rcctl set syslog flags "-a primo.example.local:* -S secundum.example.local \
+	-K /etc/ssl/example.local.CA.crt"
+doas rcctl restart syslogd</code></pre>
+
+<p><b>c. Edit pf.conf:</b></p>
+
+<p>No changes are necessary:<p/>
+
+<pre><code># Pass in log from selected network hosts
+pass in log (all. on pflog0) on $ext_if inet from ip.addr.of.client to $ext_if port 6154</code></pre>
+
+<p>Check config and reload pf:</p>
+
+<pre><code>doas pfctl -nf -/etc/pf.conf
+doas pfctl -f /etc/pf.conf</code></pre>
+
+<p><b>d. Testing:</b></p>
+
+<p>Check if there is a port and socket listening:</p>
+
+<pre><code>netstat -a | grep 6514
+netstat -a | grep secundum
+netstat -a | grep primo</code></p>
+
+
+<p><b>3. Configure client:</b></p>
+	
+<p>a. Move copy of client certificate and key from loghost (or whatever machine it was created on) to client. Check that client.crt is in /etc/ssl, client.key is in /etc/ssl/private, check ownership is root:wheel and mode is 644.</p>
+
+<p>b. No changes to /etc/syslog.conf:</p>
+
+<pre><code>...
+# Divert messages to /var/log/example.log
+*.*			@tls4://secundum.example.local
+#
+...</code></pre>
+
+<p>c. Restart syslogd:</p>
+
+<p<p>Set syslogd flags. Flags used are:</p>
+
+<p>-C (as above),</p>
+
+<p>-c (-c: PEM encoded file containing the client certificate for TLS connections to a remote loghost. The default is not to use a client certificate for the outgoing connection to a syslog server. This option has to be used together with -k key_file),</p>
+
+<p>and -k (k key_file: PEM encoded file containing the client private key for TLS connections to a remote loghost. This option has to be used together with -c cert_file),</p>
+
+<pre><code>doas rcctl set syslog flags "-C /etc/ssl/example.local.CA.crt \
+	-c /etc/ssl/primo.example.local.crt -k /etc/ssl/private/primo.example.local.key"
+doas rcctl restart syslogd</code></pre>
+
+<p>d. Edit pf.conf: No changes.</p>
+
+...</code></pre>
+# Pass out logs to loghost
+pass out log (all, to pflog0) on $ext_if inet from $ext_if to $loghost port 6514
+...</code></pre>
+
+<p>Check config and reload pf:</p>
+
+<pre><code>doas pfctl -nf -/etc/pf.conf
+doas pfctl -f /etc/pf.conf</code></pre>
+
+<p>e. Testing:</p>
+
+<p>Check for errors in /var/log/messages.</p>
+
+<p>Check pflog to see if there are packets outbound:</p>
+
+<pre><code>doas tcpdump -n -e -ttt -r /var/log/pflog</code></pre>
+
+<p>Now go back to the loghost and check for packets going in, then check for proper receipt by loghost.</p>
+
+<pre><code>tail -f /var/log/primo/example.log</code></pre>
+		  
+		  
+<p></br></p>
+
+<p>Posted by Gordon, No Hair Github Pages, March 10, 2022</p>
+
+<p>&copy;the author</p>
+
+	  </div class="twelve columns">
+    
+	</div class="row">
+
+ <!-- End Post body -->
+
+ <!-- Footer --> 
+	<div class="row">
+      <div class="twelve columns" style="text-align: center;">
+		<p>For comments, corrections, and addenda, email: sudogeek[AT]gmail.com</p>
+		<p><a href="./index.html">Github Pages index</a></p></br>
+	  </div class="twelve columns">
+	</div class="row">
+    
+ <!-- End Footer -->
+
+  </div class="container">
+
+<!-- End Document -->
+
+</body>
+</html>
+
+
