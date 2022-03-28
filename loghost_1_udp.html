@@ -59,7 +59,7 @@
 	  <div class="twelve columns" style="margin-top: 3%; text-align: left;">
 
 
-<p><b>Setting up a loghost for OpenBSD using syslogd.</b></p>
+<p><b>Setting up a loghost for OpenBSD using syslogd over UDP.</b></p>
 
 <p>This set of HowTo's will describe configuring a local loghost and clients using standard syslogd on OpenBSD. This works adequately but, since OpenBSD 7.0, packages of newer versions of syslog-ng are available and you may wish to use that. However, if you're dealing with a host which only has syslog, then it's still usable.<p>
 
@@ -105,7 +105,7 @@ doas rcctl restart syslogd</code></pre>
 <p>c. Editing pf.conf to pass and log outgoing packets:</p> 
 
 <pre><code>...
-pass out log (all) on $ext_if inet proto udp from $ext_if to $ip.addr.of.loghost port 514
+pass out log ( all, to pflog0 ) on $ext_if inet proto udp from $ext_if to $ip.addr.of.loghost port 514
 ...</code></pre>
 
 <p>Reload new pf.conf.</p>
@@ -262,6 +262,7 @@ doas rcctl restart syslogd</code></pre>
 
 <pre><code>doas tail -f /var/log/primo/example.log</code></pre>
 
+</br></br>
 	
 <p><b>D. Using separate log files on loghost for different processes running on client.</b></p>
 
