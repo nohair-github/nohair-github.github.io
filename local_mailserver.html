@@ -62,13 +62,13 @@
 
 <p>A. Introduction</p>
 
-<p>On my local network I have several hosts (small fanless appliances, etc.) which serve as firewalls, routers, web servers, reverse proxies, dns servers, and log servers. Instead of logging into each host and reviewing the daily mail alerts and logs, I decided to set up a box as a local mailserver to which each host can send mail and also to function as a certral log server. All of these network hosts are running <a href="https://man.openbsd.org/">OpenBSD</a> and are accessed by computers using OpenBSD or MacOS.</p>
+<p>On my local network I have several hosts (small fanless appliances, etc.) which serve as firewalls, routers, web servers, reverse proxies, dns servers, and log servers. Instead of logging into each host and reviewing the daily mail alerts and logs, I decided to set up a box as a local mailserver and loghost to which each host can send mail and selected logs. All of these network hosts are running <a href="https://man.openbsd.org/">OpenBSD</a> and are accessed by computers using OpenBSD or MacOS.</p>
 
 <p>The network is a local domain (example.local) with DNS for the domain provided both by unbound on dedicated DNS servers as well as local /etc/hosts in some cases.</p>
 	
 <p>The mail is accessed by ssh'ing into the mail server running OpenBSD and using <a href="https://man.openbsd.org/mail">mail</a> as included in the default install. Thunderbird can also be used on the MacOS hosts but I find ssh easier.</p>
 	
-<p>Configuration of the log server will be described in a subsequent post.</p>
+<p>Configuration of the log server will be described in a subsequent posts.</p>
 
 <p>In this configuration:</p>
 
@@ -76,7 +76,7 @@
 
 <p>° Local network traffic is unencrypted. Encryption can be added (see below) after generation of local self-signed certificates.</p>
 
-<p>° DNS and reverse DNS are provided by redundant servers running OpenBSD and unbound.</p>
+<p>° DNS and reverse DNS are provided by redundant servers running OpenBSD and unbound. This is not necessary if appropriate /etc/hosts files are present on all the machines and you confirm that forward and reverse lokups are functional.</p>
 
 <p>With all these criteria in mind, let's move on to DNS.</p>
 
@@ -258,12 +258,12 @@ forward-zone:
 
 <p>C. Set up users.<p>
 	
-<p> You can use virtual users but given that these servers have only a limited number of users (usually root and one other), it's easier to have every mail user have an actual account on the mail host. I my case, each server has a root user (which cannot be logged into except via serial console) and the administrator who is also a member of the wheel group who performs privileged tasks using doas. It is not necessary that the admin user have the same name on all the servers.</p>
+<p> You can use virtual users but given that these servers have only a limited number of users (usually root and one other), it's easier to have mail aliased or forwarded to an actual account on the mail host. I my cases, each server has a root user (which cannot be logged into except via serial console) and the administrator who is also a member of the wheel group who performs privileged tasks using doas. It is not necessary that the admin user have the same name on all the servers.</p>
 	
 
 <p>D. Configuration of OpenSMTPD - network host or server:</p>
 
-<p>/etc/mail/smtpd/conf:</p>
+<p>Changes from the default /etc/mail/smtpd/conf are bolded:</p>
 
 <pre><code># $OpenBSD: smtpd.conf,v 1.14 2019/11/26 20:14:38 gilles Exp $
 # Modified 3/1/22 by g
@@ -280,7 +280,8 @@ listen on socket
 listen on lo0
 
 action "local_mail" mbox alias <aliases>
-action "outbound" relay host smtp://secundum.example.local
+<b>#</b>action "outbound" relay
+<b>action "outbound" relay host smtp://secundum.example.local</b>
 
 # Uncomment the following to accept external mail for domain "example.org"
 #
@@ -290,6 +291,7 @@ action "outbound" relay host smtp://secundum.example.local
 match from local for local action "local_mail"
 match from local for any action "outbound"</code></pre>
 
+<p>Rules in smtpd.conf are performed on a 'first match' basis.</p>
 
 <p>/etc/mail/aliases:</p>
 
@@ -329,7 +331,7 @@ primoadmin:     primoadmin</code></pre>
 
 <pre><code>root:   primoadmin, admin@secundum.example.local</code></pre>
 
-<p>sends the message to the local admin mailbox and to the network admin mailbox on the mail server. This is for backup in case of network errors (or inadvertant bone-heaed deletion). Also, it may be useful to have a local copy when you are working on the host.</p>
+<p>sends the message to the local admin mailbox and to the network admin mailbox on the mail server. This is for backup in case of network errors (or inadvertent bone-heaed deletion). Also, it may be useful to have a local copy when you are working on the host.</p>
 	
 
 <p>E. Configuration of OpenSMTPD - network mail server:</p>
@@ -343,14 +345,14 @@ Modified 3/1/22 by g
 # See smtpd.conf(5) for more information.
 
 table aliases file:/etc/mail/aliases
-table domains file:/etc/mail/domains
+<b>table domains file:/etc/mail/domains</b>
 
 listen on socket
 
 # To accept external mail, replace with: listen on all
 #
-#listen on lo0
-listen on all hostname "secundum.baskin.local"
+<b>#</b>listen on lo0
+<b>listen on all hostname "secundum.baskin.local"</b>
 
 action "local_mail" mbox alias <aliases>
 action "domain_mail" mbox alias <aliases>
@@ -361,7 +363,7 @@ action "outbound" relay
 #match from any for domain "example.com" action "local_mail"
 
 match from local for local action "local_mail"
-match from any for domain <domains> action "domain_mail"
+<b>match from any for domain <domains> action "domain_mail"</b>
 match from local for any action "outbound"</code></pre>
 
 
