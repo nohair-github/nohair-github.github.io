@@ -114,13 +114,13 @@ EOT</code></pre>
 &lt;/dict&gt;
 &lt;/plist&gt;</code></pre>
 
-</p>which instructs launchd to monitor /var/spool/postfix/maildrop and to execute postfix for 60 seconds if there is a change in the watched folder (by an message being written to the folder by mail/sendmail).</p>
+</p>which instructs launchd to monitor the /var/spool/postfix/maildrop folder and to execute postfix for 60 seconds if there is a change in the watched folder (by an message being written to the folder by mail/sendmail).</p>
 	
 <p>However, to receive mail, an SMTP server must be running and listening on the appropriate port. For MacOS, postfix is the default but you could install another like OpenSMTPD. It's easier to just use the installed postfix; you need only to:</p>
 
-<p>1. stop/unload the existing postfix LaunchDaemon which stops and starts periodically,</p>
+<p>1. disable the existing postfix LaunchDaemon which stops and starts periodically,</p>
 
-<p>2. create launchd process which starts postfix and have postfix listen to the appropriate ports and to continue running,</p>
+<p>2. create a new launchd process which starts postfix and have postfix listen to the appropriate ports and to continue running,</p>
 
 <p>3. edit postfix master.cf and main.cf for sending and receiving messages,</p>
 
@@ -136,11 +136,11 @@ EOT</code></pre>
 
 <pre><code>enable | disable service-target
 Enables or disables the service in the requested domain. Once a service is disabled, it
-cannot be loaded in the specified domain until it is once again enabled. This state
-persists across boots of the device. This subcommand may only target services within the
-system domain or user and user-login domains</code></pre>.
+cannot be loaded in the specified domain until it is once again enabled. <b>This state
+persists across boots of the device.</b> This subcommand may only target services within
+the system domain or user and user-login domains</code></pre>.
 
-<p>You can check the status of LaunchAgents and LaunchDaemons with</p>
+<p>You can check the status of system LaunchAgents and LaunchDaemons with</p>
 
 <pre><code>sudo launchctl print system</code></pre>
 
@@ -163,7 +163,7 @@ disabled services = {
 	}
 }</code></pre>
 
-<p>"true" means disabled and "false" means enabled.</p>
+<p>"true" means disabled and "false" means enabled. Disabling the default postfix LaunchDaemon does not stop or unload the program. It has been initialized by launchd and will still run until the next boot when it will not be loaded again.</p>
 
 <p><b>2. Create a new LaunchAgent for postfix</b></p>
 
@@ -200,44 +200,46 @@ disabled services = {
         &lt;key&gt;ProgramArguments&lt;/key&gt;
         &lt;array&gt;
                 &lt;string&gt;master&lt;/string&gt;
+                &lt;string&gt;-c&lt;/string&gt;
+                &lt;string&gt;/private/etc/postfix.custom/&lt;/string&gt;
         &lt;/array&gt;
         &lt;key&gt;KeepAlive&lt;/key&gt;
         &lt;true/&gt;
 &lt;/dict&gt;
 &lt;/plist&gt;</code></pre>
 
-<p>So, basically, this starts postfix and keeps it on.</p>
+<p>So, basically, this starts postfix using the configuration file in the config directory /private/etc/postfix.custom/, and keeps it running.</p>
 
-<p><b>3. Edit master.cf and main.cf.</b></p>
+<p><b>3. Create the alternate config directory and edit master.cf and main.cf.</b></p>
 
-<p>The configuration files for postfix are found in /private/etc/postfix.
+<p>The configuration files for postfix are found in /private/etc/postfix. We will not change that as we may want to go back to the default setup easily. So, we make a new directory copying all the config files.</p>
 
-<p>Edit /private/etc/postfix/main.cf:</p>
+<pre></code>sudo cp -R /private/etc/postfix /private/etc/postfix.custom</code></pre>
 
-<pre><code>sudo cp /private/etc/postfix/main.cf /private/etc/postfix/main.cf.default
-sudo nano -w /private/etc/postfix/main.cf</code></pre>
+<p>Now backup the main.cf file:</p>
+
+<pre><code>sudo cp /private/etc/postfix.custom/main.cf /private/etc/postfix.custom/main.cf.default</code></pre>
+
+<p>Edit /private/etc/postfix/main.cf: Just go to the bottom of the file and add your configuration directives.</p>
+
+<pre><code>sudo nano -w /private/etc/postfix.custom/main.cf</code></pre>
 	
-<p>Change these lines from the default Apple main.cf:</p>
-   
-<p>Uncomment and enter canonical hostname of host computer:</p>
-
-<pre><code>myhostname = hostname.domain.tld</code></pre>
-
-<p>Uncomment:</p>
-
-<pre><code>inet_interfaces = all</code></pre>
-	
-<p>And comment out this line at end of main.cf</p>
+<p>Comment out this line at end of main.cf</p>
 
 <pre><code># Apple defaults
 ...
 #inet_interfaces = loopback-only</code></pre>
 
+<p>Add these line below the Apple defaults:</p>
+   
+<pre><code>myhostname = hostname.domain.tld</code></pre>
+inet_interfaces = all</code></pre>
+	
 <p>No change is necessary to/private/etc/postfix/master.cf but back the default file up in case you decide to experiment.</p>
 
-<pre><code>sudo cp /private/etc/postfix/master.cf /private/etc/postfix/main.cf.default</code></pre>
+<pre><code>sudo cp /private/etc/postfix.custom/master.cf /private/etc/postfix.custom/main.cf.default</code></pre>
 
-<p><b>4. 'Bootstrap' org.postfix.custom to identify and register it as system launchd process:</b></p>
+<p><b>4. 'Bootstrap' org.postfix.custom:</b> This identifies and registers it as system launchd process:</p>
 
 <pre><code>sudo launchctl bootstrap system /Library/LaunchAgents/org.postfix.custom.plist</code></pre>
 	
@@ -264,7 +266,7 @@ is com.apple.example, and service-target is gui/501/com.apple.example.</code></p
 
 <pre><code>sudo launchctl enable system/org.postfix.custom</code></pre>
 
-<p>Like disabling, enabling persists across reboots. You can check if the service is enabled:</p>
+<p>Doing this marks the LaunchAgent as active/executable. This means it will be started on boot/reboot. Like disabling, enabling persists across reboots. You can check if the service is enabled:</p>
 
 <pre><code>sudo launchctl print system | grep postfix</code></pre>
 	
@@ -295,6 +297,8 @@ EOT</code></pre>
 <p><b>8. Now check if the message was received by your Mac in terminal:</b></p>
 
 <pre><code>mail</code></pre>
+
+<p><b>9. Now reboot</b> and see that the default postfix LaunchDaemon is not running and the new custom postfix LaunchAgent is, and that it is working as expected.</p>
 
 <p>Of course, this is totally insecure and so 1970, but for quick messages in a trusted network or to receive messages sent from, say, a firewall or mailserver, it's ok. It's also useful to debug your setup as you are building a mail server prior to bolting on Dovecot, SASL, DKIM, DMARc, etc, etc.</p>
 
