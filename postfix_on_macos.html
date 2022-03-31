@@ -132,7 +132,7 @@ EOT</code></pre>
 
 <p><b>1. Stop the existing postfix LaunchDaemon</b><p>
 
-<p>In MacOS 11 Big Sur and 12 Monterey, the /System/Library/LaunchAgents and /System/Library/LaunchDaemons are in the protected volume and changes to these are prevented by System Integrity Protection. Stop the postfix instance started at boot, you can disable it with launchctl.</p>
+<p>In MacOS 11 Big Sur and 12 Monterey, the /System/Library/LaunchAgents and /System/Library/LaunchDaemons are in the protected volume and changes to these are prevented by System Integrity Protection. You can't edit the postfix plist started at boot, but you can disable it with launchctl.</p>
 
 <pre><code>enable | disable service-target
 Enables or disables the service in the requested domain. Once a service is disabled, it
@@ -144,7 +144,7 @@ system domain or user and user-login domains</code></pre>.
 
 <pre><code>sudo launchctl print system</code></pre>
 
-<p>To disable the default postfix LaunchDaemon reveribly:</p>
+<p>To disable the default postfix LaunchDaemon reversibly:</p>
 
 <pre><code>sudo launchctl disable system/com.apple.postfix.master</code></pre>
 
@@ -174,7 +174,7 @@ disabled services = {
 <p>[As an aside, the function of the various daemons and agents managed by launchd is determined by configuration files in the following folders:</p>
 
 <p>/System/Library/LaunchDaemons: Apple-supplied system daemons (start on boot)</p>
-
+ß
 <p>/System/Library/LaunchAgents:- Apple-supplied agents that apply to all users on a per-user basis (which start on any user login)<p>
 
 <p>/Library/LaunchDaemons: User or third-party system daemons (start on boot)</p>
@@ -292,7 +292,7 @@ Peace
 ^D
 EOT</code></pre>
 
-<p><b>9. Now check if the message was received by your Mac in terminal:</b></p>
+<p><b>8. Now check if the message was received by your Mac in terminal:</b></p>
 
 <pre><code>mail</code></pre>
 
