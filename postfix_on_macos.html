@@ -300,6 +300,13 @@ EOT</code></pre>
 
 <p><b>9. Now reboot</b> and see that the default postfix LaunchDaemon is not running and the new custom postfix LaunchAgent is, and that it is working as expected.</p>
 
+<p><b>10. Revert to default postfix configuration</b></p>
+
+<pre><code>sudo launchctl disable system/org.postfix.custom
+sudo launchctl enable system/com.apple.postfix.master</code></pre>
+
+<p>then reboot.</p>
+
 <p>Of course, this is totally insecure and so 1970, but for quick messages in a trusted network or to receive messages sent from, say, a firewall or mailserver, it's ok. It's also useful to debug your setup as you are building a mail server prior to bolting on Dovecot, SASL, DKIM, DMARc, etc, etc.</p>
 
 <p></br></p>
