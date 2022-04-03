@@ -68,7 +68,7 @@
 
 <p><b>A. Set up DNS:</b><p>
 	
-<p>Ensure that forward and reverse DNS for both log host and log client work, either using /etc/hosts or a local DNS server. If you don't want to do this, you can hard-code the ip adresses to the clients and servers and ignore the DNS infrastructure.</p>
+<p>Ensure that forward and reverse DNS for both log host and log client work, either using /etc/hosts or a local DNS server.</p>
 
 <p>In its simplest form, add an /etc/hosts to each loghost and client:</p>
 
@@ -250,7 +250,7 @@ doas rcctl restart syslogd</code></pre>
 
 <pre><code>doas rcctl set syslogd flags "-4 -a ip.addr.of.client -U ip.addr.of.loghost"</code></pre>
 
-<p>again, implicitly using the defaults for the socket specified in "-a" and "-U".</p>
+<p>or even less as in the initial example above, again implicitly using the defaults for the socket specified in "-a" and "-U".</p>
 
 <p>e. Edit /etc/pf.conf: no changes here.</p>
 

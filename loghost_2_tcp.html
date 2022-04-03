@@ -61,7 +61,7 @@
 
 <p><b>D. Insecure logging over TCP:</b></p>
 
-<p>There's no advantage to using tcp versus udp for insecure logging. It's only useful to get this set as an example and to troubleshoot since, in the next stage, we will be usng syslogd-tls which runs (typically) on tcp.</p>
+<p>There's no large advantage to using tcp versus udp for insecure logging. Yes, it does allow for acknowledgement from the loghost that the message was received but does not provide any greater security. It's really only useful to get this set up as an example and to troubleshoot since, in the next stage, we will be usng syslogd-tls which runs (typically) on tcp.</p>
 
 <p><b>1. Loghost (log server)</b></p>
 
@@ -87,7 +87,7 @@
 
 <p>-T listen_address (-T listen_address: Create a TCP listen socket for receiving messages and bind it to the specified address. There is no well-known port for syslog over TCP, so a port number must be specified using the host:port syntax).
 
-<p>No "-4" flag is used as that is only for udp. When messages are sent from the client, the destination address will be ip.addr.of.loghost:6514 but the source address will be varying ports of ip.addr.of.client. So:</p>
+<p>No "-4" flag is not used as that is only for udp. When messages are sent from the client, the destination address will be ip.addr.of.loghost:6514 but the source address will be varying ports of ip.addr.of.client. So:</p>
 
 <pre><code>doas rcctl set syslogd flags "-a ip.addr.of.client:* -T ip.addr.of.loghost:6514"
 doas rcctl restart syslogd</code></pre>

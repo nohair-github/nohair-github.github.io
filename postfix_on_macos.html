@@ -174,7 +174,7 @@ disabled services = {
 <p>[As an aside, the function of the various daemons and agents managed by launchd is determined by configuration files in the following folders:</p>
 
 <p>/System/Library/LaunchDaemons: Apple-supplied system daemons (start on boot)</p>
-ß
+
 <p>/System/Library/LaunchAgents:- Apple-supplied agents that apply to all users on a per-user basis (which start on any user login)<p>
 
 <p>/Library/LaunchDaemons: User or third-party system daemons (start on boot)</p>
@@ -308,6 +308,8 @@ sudo launchctl enable system/com.apple.postfix.master</code></pre>
 <p>then reboot.</p>
 
 <p>Of course, this is totally insecure and so 1970, but for quick messages in a trusted network or to receive messages sent from, say, a firewall or mailserver, it's ok. It's also useful to debug your setup as you are building a mail server prior to bolting on Dovecot, SASL, DKIM, DMARc, etc, etc.</p>
+
+<p>However, a more typical solution is to spin up a local mailserver on the network and have the messages from the hosts/appliances forward to that machine to be checked as desired. That can be combined with a loghost for a single point of reporting and management which can be checked from local or remote workstations by the admins.</p>
 
 <p></br></p>
 
