@@ -114,9 +114,9 @@ EOT</code></pre>
 &lt;/dict&gt;
 &lt;/plist&gt;</code></pre>
 
-</p>which instructs launchd to monitor the /var/spool/postfix/maildrop folder and to execute postfix for 60 seconds if there is a change in the watched folder (by an message being written to the folder by mail/sendmail).</p>
+</p>which instructs launchd to monitor the /var/spool/postfix/maildrop folder and to execute postfix for 60 seconds if there is a change in the watched folder (caused by an message being written to the folder by mail/sendmail).</p>
 	
-<p>However, to receive mail, an SMTP server must be running and listening on the appropriate port. For MacOS, postfix is the default but you could install another like OpenSMTPD. It's easier to just use the installed postfix; you need only to:</p>
+<p>However, to receive mail, an SMTP server must be running and listening on the appropriate port. For MacOS, postfix is the default but you could install another like OpenSMTPD - which is easier to configure and setup than postfix. OTOH, using the base MacOS components is fairly easy as well. You need only to:</p>
 
 <p>1. stop and disable the existing postfix LaunchDaemon which stops and starts periodically,</p>
 
@@ -132,7 +132,7 @@ EOT</code></pre>
 
 <p><b>1. Stop and disable the existing postfix LaunchDaemon</b><p>
 
-<p>In MacOS 11 Big Sur and 12 Monterey, the /System/Library/LaunchAgents and /System/Library/LaunchDaemons are in the protected volume and changes to these are prevented by System Integrity Protection (SIP). You can stop the initialized postfix LaunchDaemon. You can disable it with launchctl. But, you can't edit the postfix plist. The disabled postfix LaunchDaemon will still be started at the next boot because it is in the override database. To change this override you need to boot into recovery mode (to bypass SIP) and edit the override database plist. Or, you need to write a shell script that unload and disables the default postfix LaunchDaemon then starts you new replacement postfix LaunchAgent.</p>
+<p>In MacOS 11 Big Sur and 12 Monterey, the /System/Library/LaunchAgents and /System/Library/LaunchDaemons are in the protected volume and changes to these are prevented by System Integrity Protection (SIP). You can stop the initialized postfix LaunchDaemon. You can disable it with launchctl. But, you can't edit the postfix plist. The disabled postfix LaunchDaemon will still be started at the next boot because it is in the override database. To change this override you need to boot into recovery mode (to bypass SIP) and edit the override database plist. Or, you need to write a shell script that unloads and disables the default postfix LaunchDaemon then starts your new replacement postfix LaunchAgent at boot.</p>
 
 <p>We will do that later, but now to setup and debug our new postfix LaunchAgent, lets stop then disable the default postfix LaunchDaemon.</p>
 
