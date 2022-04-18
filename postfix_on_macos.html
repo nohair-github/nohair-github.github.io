@@ -274,11 +274,11 @@ Note: For instance, when referring to a service with the identifier com.apple.ex
 loaded into the GUIdomain of a user with UID 501, domain-target is gui/501/,service-name
 is com.apple.example, and service-target is gui/501/com.apple.example.</code></pre>
 	 
-<p><b>4. Enable service</b></p>
+<p><b>5. Enable service</b></p>
 
 <pre><code>sudo launchctl enable system/org.postfix.custom</code></pre>
 
-<p>Doing this marks the LaunchAgent as active/executable. This means it will be started on boot/reboot. Like disabling, enabling persists across reboots. You can check if the service is enabled:</p>
+<p>Doing this marks the LaunchAgent as active/executable. This means it will be started on boot/reboot, if so configured. Like disabling, enabling persists across reboots. You can check if the service is enabled:</p>
 
 <pre><code>sudo launchctl print system | grep postfix</code></pre>
 	
@@ -286,11 +286,11 @@ is com.apple.example, and service-target is gui/501/com.apple.example.</code></p
 
 <pre><code>sudo launchctl print-disabled system</code></pre>
 
-<p><b>5. Start service:</b></p>
+<p><b>6. Start service:</b></p>
 
 <pre><code>sudo launchctl kickstart system/org.postfix.custom</code></pre>
 
-<p><b>6. Check if running:</b></p>
+<p><b>7. Check if running:</b></p>
 
 <pre><code>sudo postfix status</code></pre>
 
@@ -298,7 +298,7 @@ is com.apple.example, and service-target is gui/501/com.apple.example.</code></p
 
 <pre><code>ps aux | grep postfix</code></pre>
 
-<p><b>7. Test by sending a message from a network computer:</b></p>
+<p><b>8. Test by sending a message from a network computer:</b></p>
 
 <pre><code>mail -s "Test message from alpha" joe@mac.domain.tld
 This is a test of postfix recieving emails from lan computer
@@ -306,16 +306,20 @@ Peace
 ^D
 EOT</code></pre>
 
-<p><b>8. Now check if the message was received by your Mac in terminal:</b></p>
+<p><b>9. Now check if the message was received by your Mac in terminal:</b></p>
 
 <pre><code>mail</code></pre>
 
-<p>Now, you're set. But if you reboot or boot, the default postfix LaunchAgent will be restarted. The new custom postfix process should also be started. Check as above. So, kill the default process:</p>
+<p>Now, you're set.</p>
+
+<p><b>Section below is incorrect - needs to be revised.</b></p>
+
+<p>But if you reboot or boot, the default postfix LaunchAgent will be restarted. The new custom postfix process should also be started. Check as above. So, kill the default process:</p>
 
 <pre><code>launchctl kill SIGTERM system/com.apple.postfix.master
 launchctl disable system/com.apple.postfix.master</code></pre>
 
-<p>9. If you want to prevent this, you can write a script to run at boot, like so:</p>
+<p>If you want to prevent this, you can write a script to run at boot, like so:</p>
 
 <pre><code>#!/bin/sh
 if [ "$(launchctl print-disabled system | grep com.apple.postfix | grep -o '[^ ]*$')" = 'true' ];
@@ -351,7 +355,7 @@ fi</code></pre>
 
 Now reboot</b> and see that the default postfix LaunchDaemon is not running and the new custom postfix LaunchAgent is, and that it is working as expected.</p>
 
-<p><b>10. Revert to default postfix configuration</b></p>
+<p><b>Revert to default postfix configuration</b></p>
 
 <pre><code>sudo launchctl disable system/org.postfix.custom
 sudo launchctl enable system/com.apple.postfix.master</code></pre>
