@@ -4,7 +4,7 @@
 
   <!-- Basic Page Needs -->
   <meta charset="utf-8">
-  <title>No Hair Github Pages: UsingPostfix on MacOS 11 and 12</title>
+  <title>No Hair Github Pages: Using Postfix on MacOS 11 and 12 - Part 1</title>
   <meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
   <meta name="generator" content="GSB">
   <meta name="description" content="Various items of interest to the authors">
@@ -51,7 +51,7 @@ rel="icon" type="image/x-icon" />
     <div class="row">
 		
       <div class="twelve columns" style="margin-top: 4%; text-align: center;">
-        You are here: <a href="./index.html">Home</a>  > <a href="./postfix_on_macos.html">New Post</a></br>
+        You are here: <a href="./index.html">Home</a>  > <a href="./postfix_on_macos.html">Postfix on macos - 1</a></br>
       </div class="twelve columns">
       
       <div class="twelve columns" style="margin-top: 3%; text-align: center; background: url('./sunset_2018.jpg') no-repeat center;">
@@ -67,7 +67,7 @@ rel="icon" type="image/x-icon" />
 	<div class="row">
 	
 	  <div class="twelve columns" style="margin-top: 3%; text-align: center;">
-		<h5><b>Using Postfix as MTA on MacOS</b></h5>
+		<h5><b>Using Postfix as MTA on MacOS - 1</b></h5>
 	  </div class="twelve columns">
 
 	  <div class="twelve columns" style="margin-top: 3%; text-align: left;">
@@ -76,7 +76,12 @@ rel="icon" type="image/x-icon" />
 
 <p>or</p>
 
-<p><b>How to enable postfix to receive mail on MacOS</b></p>
+<p><b>One way to enable postfix to receive mail on MacOS</b></p>
+
+<p><b>**</b></p>
+<p><b>This has been superceded by a different approach based on postmulti.</b></p>
+<p><b>Please see <a href="./postfix_on_macos_2.html">Postfix as MTA on macos 2: Using postmulti</a></br></p>
+<p><b>**</b></p>
 
 <p>MacOS uses postfix as the default MTA. No postfix configuration changes are necessary to send mail on the default MacOS installation. Although 'sudo postfix status' shows it not running, the default postfix application is initialized and will restart with any 'sendmail' command when needed, run for 60 sec, then stop. Check 'lsof | grep postfix' to see the files which are open. Then check this by sending a message from Terminal:</p>
 
@@ -312,7 +317,9 @@ EOT</code></pre>
 
 <p>Now, you're set.</p>
 
-<p><b>Section below is incorrect - needs to be revised.</b></p>
+<p><b>**</b></p>
+<p><b>Sections below are incorrect/under testing - needs to be revised.</b></p>
+<p><b>**</b></p>
 
 <p>But if you reboot or boot, the default postfix LaunchAgent will be restarted. The new custom postfix process should also be started. Check as above. So, kill the default process:</p>
 
@@ -368,7 +375,7 @@ sudo launchctl enable system/com.apple.postfix.master</code></pre>
 
 <p></br></p>
 
-<p>Posted by Gordon, No Hair Github Pages, April 12, 2020; revised March 30, 2022.</p>
+<p>Posted by Gordon, No Hair Github Pages, April 12, 2020; revised April 20, 2022.</p>
 
 <p>&copy; nohair.net and the author</p>
 

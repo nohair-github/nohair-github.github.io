@@ -1,0 +1,147 @@
+<html lang="en">
+
+<head>
+
+  <!-- Basic Page Needs -->
+  <meta charset="utf-8">
+  <title>No Hair Github Pages: Using Postfix on MacOS 11 and 12 - Part 2</title>
+  <meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+  <meta name="generator" content="GSB">
+  <meta name="description" content="Various items of interest to the authors">
+  <meta name="author" content="Our writers and correspondents">
+
+  <!-- Mobile Specific Metas -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- FONT -->
+  <link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="./normalize.css">
+  <link rel="stylesheet" href="./skeleton.css">
+
+  <!-- Favicon -->
+  <link href="data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQEAYAAABPYyMiAAAABmJLR0T\
+8JWPfcAAAACXBIWXMAAABIAAAASABGyWs+AAACNElEQVRIx41VzUs6QRh+XH4SifRBL\
+CEIshBqLdFeIrwIfVqnoq5eApOK+kO6dimo6NC96GgSSlDSIUo7ZItkQunW0gdlBRn0\
+O8Q0Mds0+1yGeb+e931n5h0HBBgcjEQikc9PkR0PyWQikUg4HDw9V0GIY7F4fGaGyg8\
+P8mTEz5hW5vPp2nA1tbGxtKSOBHJLnEqdXCQTosrvrgoFHQdmJiYm5udFXdSYg14xB8\
+f7+9OpziBx8e7O9MECoWjoNzYGBgbCwa5SciiQKyxE9PhvHywl9ZNDZ6vQ0N1kS4CVx\
+e3t4+P9OzlmWPx+sVV86Drudyx8d8T9WYJo3N5UKAHzVvba2uLiwQPWrq5ubqRSwt7e\
+zs71N5eHw0NDoKBCLjY39lJ5NDoH4jCvoAMH9fblsGHRfX9c7HZbCQiInNjx4thOgCA\
+Q6OgIBIC3t4eHalXccmJHESwHIGq+v2KApyeOp2vr8DISFf8DCwvLyysr7OD6Sqmtbd\
+TffT01NTk5P0LqmqoigKkM1mMj9vgcD+zw6O8PhUIga9vQEg5oGnJ3l87oO+HxfAQlK\
+pWKxWATa24NBv58Sk9dRKul6LkftyWCSWMH32Ui1mstFV3YCulx1dbNhWQynd7fp35N\
+TS0tsmwlFt6BbDaT2d2leadk06Qyu3GYSH8C8i+qysU6u8H3O652G1Wqv9Rmz7L+A5y\
+HJrq8cDXF0Zhmla7a+vK5Vy2T6xsAOijoggIib4DwP6V6vAI3f4AAAAAElFTkSuQmCC=="
+rel="icon" type="image/x-icon" />
+
+  <!--  Scripts -->
+  
+</head>
+
+
+<body>
+
+<!-- Primary Page Layout -->
+  
+<div class="container">
+  
+ <!-- Header -->
+    <div class="row">
+		
+      <div class="twelve columns" style="margin-top: 4%; text-align: center;">
+        You are here: <a href="./index.html">Home</a>  > <a href="./postfix_on_macos_2.html">Postfix on macos - 2</a></br>
+      </div class="twelve columns">
+      
+      <div class="twelve columns" style="margin-top: 3%; text-align: center; background: url('./sunset_2018.jpg') no-repeat center;">
+	  <img src="./spacer.gif" height="30px"></br>
+	  <h4><b>No Hair Github Pages</b></h4>
+	  </div class="twelve columns">
+
+ 	</div class ="row">
+
+ <!-- End Header -->
+
+ <!-- Post body -->
+	<div class="row">
+	
+	  <div class="twelve columns" style="margin-top: 3%; text-align: center;">
+		<h5><b>Using Postfix as MTA on MacOS - 2: postmulti</b></h5>
+	  </div class="twelve columns">
+
+	  <div class="twelve columns" style="margin-top: 3%; text-align: left;">
+		
+<p><b>launchd, launchctl, postfix and postmulti on MacOS 11 'Big Sur' and 12 'Monterey'</b></p> 
+
+<p>or</p>
+
+<p><b>Enable postfix to receive mail from remote hosts on MacOS</b></p>
+
+<p>As noted in part 1, MacOS uses postfix as the default MTA. The postfix instance receives mail from local daemons. In addition, no postfix configuration changes are necessary to send mail from the default MacOS instance to local or remote machines with a listening smtpd on port 25. This is outlined in <a href="./postfix_on_macos.html">Part 1</a>.
+
+<p>Thus, the Apple default postfix instance is similar to a <a href="http://www.postfix.org/MULTI_INSTANCE_README.html#split">postfix null client</a> and a basic outgoing mail client. Here is the last stanza of /etc/postfix/main.cf on MacOS 12.3.1:</p>
+
+<pre><code># Apple Defaults
+#
+message_size_limit = 10485760
+mailbox_size_limit = 0
+biff = no
+mynetworks = 127.0.0.0/8, [::1]/128
+smtpd_client_restrictions = permit_mynetworks permit_sasl_authenticated permit
+recipient_delimiter = +
+tls_random_source = dev:/dev/urandom
+smtpd_tls_ciphers = medium
+
+inet_interfaces = loopback-only</code></pre>
+
+<p>The default postfix instance is listening only on localhost for mail sent from cron, other system daemons, and by the 'mail' command in Terminal. (Although, in the Apple implementation, the process is not on and continually listening, it is triggered by launchd when a message is sent to /var/spool/postfix/maildrop.)
+
+<p>To get a fully functional MTA, we can just leave that default postfix instance alone and add on another postfix instance which recieves mail from remote hosts. This is much simpler than the rigaramole we had to go through in Part 1 - although that's a nice introductory exercise to launchd and launchctl. For this, we will use <a href="http://www.postfix.org/postmulti.1.html">postmulti</a>, a standard compnent of postfix installs which is installed by default on MacOS. The <a href="http://www.postfix.org/MULTI_INSTANCE_README.html">README</a> linked above is a pretty clear guide to how to do this. This should be read carefully.</p>
+
+<p><b>**</b></p>
+
+<p><b>Sections below are not yet completed</b></p>
+
+<p><b>**</b></p>
+
+<p><b>1. No changes to the default postfix LaunchDaemon: Leave it running to handle system mail and to send mail.</b></p>
+
+<p><b>2. Enable multiple postfix instances with postmulti:</b></p>
+
+<p><b>3. Configure the new postfix instance ("postfix.custom"):</b></p>
+
+<p><b>4. Start the postfix.custom instance with postmulti with appropriate command line options:</b></p>
+
+<p><b>5. Test mail sending and receiving from local and remote sources:</b></p>
+
+<p><b>6. Configure launchd to enable and start postfix.custom instance at boot:</b></p>
+
+<p></br></p>
+
+<p>Posted by Gordon, No Hair Github Pages, April 12, 2020; revised March 30, 2022.</p>
+
+<p>&copy; nohair.net and the author</p>
+
+	  </div class="twelve columns">
+    
+	</div class="row">
+
+ <!-- End Post body -->
+
+ <!-- Footer --> 
+	<div class="row">
+      <div class="twelve columns" style="text-align: center;">
+		<p>For comments, corrections, and addenda, email: gordon[AT]nohair.net</p>
+		<p><a href="./index.html">Github Pages index</a></p></br>
+	  </div class="twelve columns">
+	</div class="row">
+    
+ <!-- End Footer -->
+
+  </div class="container">
+
+<!-- End Document -->
+
+</body>
+</html>
