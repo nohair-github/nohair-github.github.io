@@ -159,7 +159,7 @@ the system domain or user and user-login domains</code></pre>.
 
 <p>To stop the default postfix LaunchDaemon reversibly:</p>
 
-<pre><code>sudo launchctl kill SIGTERM system/com.apple.postfix.master
+<pre><code>sudo launchctl kill SIGTERM system/com.apple.postfix.master</code></pre>
 
 <p>To disable the default postfix LaunchDaemon reversibly:</p>
 
@@ -249,7 +249,7 @@ disabled services = {
 
 <p>Add these line below the Apple defaults:</p>
    
-<pre><code>myhostname = hostname.domain.tld</code></pre>
+<pre><code>myhostname = hostname.domain.tld
 inet_interfaces = all</code></pre>
 	
 <p>No change is necessary to/private/etc/postfix/master.cf but back the default file up in case you decide to experiment.</p>
