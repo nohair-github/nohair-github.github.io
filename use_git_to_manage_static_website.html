@@ -1,0 +1,205 @@
+<html lang="en">
+
+<head>
+
+  <!-- Basic Page Needs -->
+  <meta charset="utf-8">
+  <title>No Hair Github Pages: Use git to manage static website</title>
+  <meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+  <meta name="generator" content="GSB">
+  <meta name="description" content="Various items of interest to the authors">
+  <meta name="author" content="Our writers and correspondents">
+
+  <!-- Mobile Specific Metas -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- FONT -->
+  <link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="./normalize.css">
+  <link rel="stylesheet" href="./skeleton.css">
+
+  <!-- Favicon -->
+
+  <!--  Scripts -->
+  
+  <!-- Local CSS styles -->
+  <style>
+  workflow {
+    font-size: 0; /*fix white space*/
+        }
+  workflow > node {
+    font-size: 16px;
+    display: inline-block;
+    width: 160px;
+    border: 1px outset black;
+    padding: 5px;
+    box-sizing: border-box;
+    text-align: center;
+        }
+  workflow > arrow {
+    font-size: 16px;
+    display: inline-block;
+    width: 30px;
+    padding: 0px;
+    box-sizing: border-box;
+    text-align: center;
+        }
+  </style>
+  
+</head>
+
+
+<body>
+
+<!-- Primary Page Layout -->
+  
+<div class="container">
+  
+ <!-- Header -->
+    <div class="row">
+		
+      <div class="twelve columns" style="margin-top: 4%; text-align: center;">
+        You are here: <a href="./index.html">Home</a>  > <a href="./use_git_to_manage_static_website.html">Use git to manage a static website</a></br>
+      </div class="twelve columns">
+      
+      <div class="twelve columns" style="margin-top: 3%; text-align: center;">
+	  <img src="./spacer.gif" height="30px"></br>
+	  <h4><b>No Hair Github Pages</b></h4>
+	  </div class="twelve columns">
+
+ 	</div class ="row">
+
+ <!-- End Header -->
+
+ <!-- Post body -->
+	<div class="row">
+	
+	  <div class="twelve columns" style="margin-top: 3%; text-align: center;">
+		<h5><b>Use git to manage a static website</b></h5>
+	  </div class="twelve columns">
+
+	  <div class="twelve columns" style="margin-top: 3%; text-align: left;">
+
+<p></p>
+
+<p>I edit my blog using a desktop Mac, a Macbook, and an iPad. Now I use ssh and TextWrangler on the Macs and Textastic on the iPad. But if I'm not connected, I'm out of luck. In addition, I am actually editing the live site, which has the potential for disaster. I wanted to have the ability to edit and post to the site while offline, have some degree of version control to roll back mistakes and as well as have backups if the webserver crashes or I screw up by deleting some file.
+                
+<p>I decided to use git to manage the blog so I can have multiple machines editing and some degree of distributed backup. There are a number of articles on the web regarding this (for example, <a href="https://gist.github.com/Nilpo/8ed5e44be00d6cf21f22">here</a>), but my system is a little bit different.
+                
+<h6>Setting up the web server</h6>
+                
+<p>For the server running OpenBSD with httpd as the web server, the workflow is this:</p>
+                
+</div>
+                
+<div style="width: 90%; margin: 0 auto;">
+<workflow>
+<node>httpd web root</node>
+<<arrow><-</arrow> 
+<node>devel.repo.git</node><arrow><--></arrow>
+<node>remote computers</node>
+</workflow>
+</div>
+                
+<div class="twelve columns" style="margin-top: 3%; text-align: left;">
+                       
+<p>Here, the git repo "devel.repo.git" acts as the central repository. The remote repos on the client machines are clones of the devel.repo.git. After edits, commits are pushed to the devel.repo.git master. A post-receive hook checks out the files to the web server www document root (see below). 
+      
+<p>So to set up the OpenBSD box:
+                
+<p>1. Set up passwordless ssh using shared keys: This is well-described in multiple sources. For the iPad, there are some quirks (see below).
+                
+<p>2. Install git: By the usual <a href="https://www.openbsd.org/faq/faq15.html">package system</a>:</p>
+                
+<pre><code>pkg_add -v git</code></pre>
+                
+<p>3. Create git repos:</p>
+                
+<p>First, create the shared development repo that the remote users will clone and push to. This should be a bare repository. This will have a post-receive script to checkout the HTML and other files to the web document root. Another non-bare repository is also created to act as a backup repo and initial source of the files in the central shared bare repo.</p>
+
+<pre><code>cd ~/blog/git-repos/
+mkdir live.blog devel.blog.git
+cd devel.blog.git
+git init --bare
+touch hooks/post-receive
+chmod 755 hooks/post-receive
+
+cd ../live.blog
+git init
+cp -R /var/www/htdocs/vhosts/blog/* .
+git add -A
+git commit -a -m "Initial commit"
+git remote add devel /home/user/blog/git-repos/devel.blog.git
+git push devel master</code></pre>
+                 
+<p>4. Post-receive script:
+
+<p>For devel.repo.git/hooks/post-receive:</p>
+                
+<pre><code>#!/bin/sh
+GIT_WORK_TREE=/path/to/webroot/of/website git checkout -f --</code></pre>
+
+<p>The "--" in git-checkout acts to only checkout the changed files.</p>
+
+<h6>Setting up a Mac client</h6>
+
+<p>First, git (part of the xcode command line tools) is installed. Then, be sure passwordless ssh access with private/public keys to your server works. A key passphrase should be used. Next, the devel repository is cloned and TextWrangler is set as the editor. To do this, be sure the command line tools for TextWrangler need are installed. (You can check by seeing if /usr/local/bin/edit exists.):</p>
+                
+<pre><code>cd ~
+mkdir git-repos
+cd git-repo
+git clone ssh://user@192.168.1.10:/home/user/blog/git-repos/devel.blog.git
+git config --global core.editor /usr/local/bin/edit</code></pre>
+
+<p>Now, the terminal can be used to manage the repo with TextWrangler as the editor as before. To edit a file if you'e working in the repo directory, simply enter in the terminal:</p>
+                
+<pre><code>edit ./post_template.html</code></pre>
+                
+<p>TextWrangler pops up with the file open, edit it, and save. Now, go back to the terminal and check "git status" and you will see the new file or modified file. Then, it's a matter of "git add new_filename.html" or "git add -a" followed by "git commit." Finally, when all your work is done, "git push." The commit to the devel.repo.git on the web server updates the web site.</p>
+
+<h6>Setting up the iPad</h6>
+                
+<p>The apps used are <a href="https://www.textasticapp.com/">Textastic</a> as an editor and <a href="htt
+ps://workingcopyapp.com/">Working Copy</a> as a git client.
+                
+<p>First, set up passwordless ssh access to the webserver. Working Copy (WC) tends to be very fastidious about the private key for the server. It says it must be in OpenSSH format yet rejects keys made with "keygen -o" on both the Mac and OpenBSD. The best approach is just to use or generate keys in WC and export the public key to the server.
+                
+<p>Once you have this set up, clone the devel repo. When you select a file to edit, simply select "Open in Textastic" from the Share menu on the top right and the file opens in the Textastic editor. As you edit (the actual file in the WC silo), the changes appear in WC. No need to save or share back - pretty slick.
+                
+<p>Then it's the usual git commit and git push in WC. The web site updates seamlessly. With this set up, it's now easier to manage the blog from the iPad than the desktop!</p>
+
+
+<h6>Final thoughts</h6>
+                
+<p> Important: Remember, when you're editing from multiple device or locations, to "git pull" to get the current master before you start up on a new edit!
+
+<p></br></p>
+
+<p>Posted by Gordon, No Hair Github Pages, August 22, 2022</p>
+
+<p>&copy;the author</p>
+
+	  </div class="twelve columns">
+    
+	</div class="row">
+
+ <!-- End Post body -->
+
+ <!-- Footer --> 
+	<div class="row">
+      <div class="twelve columns" style="text-align: center;">
+		<p>For comments, corrections, and addenda, email: sudogeek[AT]gmail.com</p>
+		<p><a href="./index.html">Github Pages index</a></p></br>
+	  </div class="twelve columns">
+	</div class="row">
+    
+ <!-- End Footer -->
+
+  </div class="container">
+
+<!-- End Document -->
+
+</body>
+</html>
