@@ -291,7 +291,7 @@ listen on lo0
 
 action "local_mail" mbox alias <aliases>
 <b>#</b>action "outbound" relay
-<b>action "outbound" relay host smtp://secundum.example.local</b>
+<b>action "outbound" relay host smtp://mail.example.internal</b>
 
 # Uncomment the following to accept external mail for domain "example.org"
 #
@@ -362,7 +362,7 @@ listen on socket
 # To accept external mail, replace with: listen on all
 #
 <b>#</b>listen on lo0
-<b>listen on all hostname "secundum.example.local"</b>
+<b>listen on all hostname "secundum.example.internal"</b>
 
 action "local_mail" mbox alias <aliases>
 action "domain_mail" mbox alias <aliases>
@@ -416,10 +416,11 @@ admin@secundum.example.local: admin</code></pre>
 
 <p>/etc/mail/domains:</p>
 
-<pre><code>example.local
-*.example.local
-primo.example.local
-fw.example.local</code></pre>
+<pre><code>example.internal
+*.example.internal
+primo.example.internal
+fw.example.internal
+... </code></pre>
 
 
 <p>F. PF configuration - network server/host:</p>
