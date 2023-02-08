@@ -83,7 +83,7 @@
 
 <p>B. DNS</p>
 
-<p>The examples here will concentrate on unbound on OpenBSD. We will configure a forwarding and caching DNS server for the network which uses DNS over TLS to communicate with the external authoritative DNS servers. Here, the local domain is "example.local."
+<p>The examples here will concentrate on unbound on OpenBSD. We will configure a forwarding and caching DNS server for the network which uses DNS over TLS to communicate with the external authoritative DNS servers. Here, the local domain is "example.internal."
 	
 <p>The config file for unbound is found at /var/unbound/etc/unbound.conf:</p>
 
@@ -156,18 +156,24 @@ server:
 	#local-data-ptr: "192.0.2.51 mycomputer.local"
 
 	# example.local
-	local-zone: "example.local." static
+	local-zone: "example.internal." static
 
-	local-data: "fw.example.local. IN A 10.1.1.1"
-	local-data: "primo.example.local. IN A 10.1.1.2"
-	local-data: "canon.example.local. IN A 10.1.1.6"
-	local-data: "secundum.example.local. IN A 10.1.1.9"
-
+	local-data: "fw.example.internal. IN A 10.1.1.1"
+	local-data: "primo.example.internal. IN A 10.1.1.2"
+	local-data: "canon.example.internal. IN A 10.1.1.6"
+	local-data: "secundum.example.internal. IN A 10.1.1.9"
+	local-date: "mail.example.internal. IN A 10.1.1.25"
+	local-data: "mba.example.internal. IN A 10.1.1.11"
+	
 	local-zone: "1.1.10.in-addr.arpa" static
 
-	local-data-ptr: "10.1.1.1 fw.example.local"
-	local-data-ptr: "10.1.1.2 primo.example.local"
-	local-data-ptr: "10.1.1.9 secundum.example.local"
+	local-data-ptr: "10.1.1.1 fw.example.internal"
+	local-data-ptr: "10.1.1.2 primo.example.internal"
+	local-data-ptr: "10.1.1.6 canon.example.internal"
+	local-data-ptr: "10.1.1.9 secundum.example.internal"
+	local-data-ptr: "10.1.1.25 mail.example.internal"
+	local-data-ptr: "10.1.1.11 mba.example.internal"
+
 
 	# example.com for web server
 	local-zone: "example.com." transparent
@@ -246,10 +252,14 @@ forward-zone:
 	
 <pre><code>127.0.0.1       localhost
 ::1             localhost
-10.1.1.1        fw.example.local fw
+10.1.1.1        fw.example.internal fw
 
-10.1.1.2        primo.example.local primo
-10.1.1.9        secundum.example.local secundum</code></pre>
+10.1.1.2        primo.example.internal primo
+10.1.1.9        secundum.example.internal secundum
+10.1.1.1	fw.example.internal fw
+10.1.1.6	canon.example.internal canon
+10.1.1.25	mail.example.internal mail
+10.1.1.11	mba.example.internal mba</code></pre>
 
 <p>and similarly for the other servers in the network.</p>
 
