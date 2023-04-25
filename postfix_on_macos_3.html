@@ -1,0 +1,257 @@
+<html lang="en">
+
+<head>
+
+  <!-- Basic Page Needs -->
+  <meta charset="utf-8">
+  <title>No Hair Github Pages: Using Postfix on MacOS 11+ - Part 3: postmulti</title>
+  <meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+  <meta name="generator" content="GSB">
+  <meta name="description" content="Various items of interest to the authors">
+  <meta name="author" content="Our writers and correspondents">
+
+  <!-- Mobile Specific Metas -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- FONT -->
+  <link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="./normalize.css">
+  <link rel="stylesheet" href="./skeleton.css">
+
+  <!-- Favicon -->
+  <link href="data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQEAYAAABPYyMiAAAABmJLR0T\
+8JWPfcAAAACXBIWXMAAABIAAAASABGyWs+AAACNElEQVRIx41VzUs6QRh+XH4SifRBL\
+CEIshBqLdFeIrwIfVqnoq5eApOK+kO6dimo6NC96GgSSlDSIUo7ZItkQunW0gdlBRn0\
+O8Q0Mds0+1yGeb+e931n5h0HBBgcjEQikc9PkR0PyWQikUg4HDw9V0GIY7F4fGaGyg8\
+P8mTEz5hW5vPp2nA1tbGxtKSOBHJLnEqdXCQTosrvrgoFHQdmJiYm5udFXdSYg14xB8\
+f7+9OpziBx8e7O9MECoWjoNzYGBgbCwa5SciiQKyxE9PhvHywl9ZNDZ6vQ0N1kS4CVx\
+e3t4+P9OzlmWPx+sVV86Drudyx8d8T9WYJo3N5UKAHzVvba2uLiwQPWrq5ubqRSwt7e\
+zs71N5eHw0NDoKBCLjY39lJ5NDoH4jCvoAMH9fblsGHRfX9c7HZbCQiInNjx4thOgCA\
+Q6OgIBIC3t4eHalXccmJHESwHIGq+v2KApyeOp2vr8DISFf8DCwvLyysr7OD6Sqmtbd\
+TffT01NTk5P0LqmqoigKkM1mMj9vgcD+zw6O8PhUIga9vQEg5oGnJ3l87oO+HxfAQlK\
+pWKxWATa24NBv58Sk9dRKul6LkftyWCSWMH32Ui1mstFV3YCulx1dbNhWQynd7fp35N\
+TS0tsmwlFt6BbDaT2d2leadk06Qyu3GYSH8C8i+qysU6u8H3O652G1Wqv9Rmz7L+A5y\
+HJrq8cDXF0Zhmla7a+vK5Vy2T6xsAOijoggIib4DwP6V6vAI3f4AAAAAElFTkSuQmCC=="
+rel="icon" type="image/x-icon" />
+
+  <!--  Scripts -->
+  
+</head>
+
+
+<body>
+
+<!-- Primary Page Layout -->
+  
+<div class="container">
+  
+ <!-- Header -->
+    <div class="row">
+		
+      <div class="twelve columns" style="margin-top: 4%; text-align: center;">
+        You are here: <a href="./index.html">Home</a>  > <a href="./postfix_on_macos_2.html">Postfix on macos - 3</a></br>
+      </div class="twelve columns">
+      
+      <div class="twelve columns" style="margin-top: 3%; text-align: center; background: url('./sunset_2018.jpg') no-repeat center;">
+	  <img src="./spacer.gif" height="30px"></br>
+	  <h4><b>No Hair Github Pages</b></h4>
+	  </div class="twelve columns">
+
+ 	</div class ="row">
+
+ <!-- End Header -->
+
+ <!-- Post body -->
+	<div class="row">
+	
+	  <div class="twelve columns" style="margin-top: 3%; text-align: center;">
+		<h5><b>Using Postfix as MTA on MacOS - 3: postmulti</b></h5>
+	  </div class="twelve columns">
+
+	  <div class="twelve columns" style="margin-top: 3%; text-align: left;">
+		
+<p><b>launchd, launchctl, postfix and postmulti on MacOS 11+</b></p> 
+
+<p>or</p>
+
+<p><b>Enable postfix to receive mail from remote hosts on MacOS</b></p>
+
+<p>As noted in part 1, MacOS uses postfix as the default MTA. The postfix instance receives mail from local daemons. In addition, no postfix configuration changes are necessary to send mail from the default MacOS instance to local or remote machines with a listening smtpd on port 25. This is outlined in <a href="./postfix_on_macos.html">Part 1</a>.
+
+<p>Thus, the Apple default postfix instance is similar to a <a href="http://www.postfix.org/MULTI_INSTANCE_README.html#split">postfix null client</a> and a basic outgoing mail client. Here is the last stanza of /etc/postfix/main.cf on MacOS 12.3.1:</p>
+
+<pre><code># Apple Defaults
+#
+message_size_limit = 10485760
+mailbox_size_limit = 0
+biff = no
+mynetworks = 127.0.0.0/8, [::1]/128
+smtpd_client_restrictions = permit_mynetworks permit_sasl_authenticated permit
+recipient_delimiter = +
+tls_random_source = dev:/dev/urandom
+smtpd_tls_ciphers = medium
+
+inet_interfaces = loopback-only</code></pre>
+
+<p>The default postfix instance is listening only on localhost for mail sent from cron, other system daemons, and by the 'mail' command in Terminal. (Although, in the Apple implementation, the process is not on and continually listening, it is triggered by launchd when a message is sent to /var/spool/postfix/maildrop.)
+
+<p>To get a fully functional MTA, we can just leave that default postfix instance alone and add on another postfix instance which recieves mail from remote hosts. This is much simpler than the rigaramole we had to go through in Part 2 - although that's a nice introductory exercise to launchd and launchctl. For this, we will use <a href="http://www.postfix.org/postmulti.1.html">postmulti</a>, a standard compnent of postfix installs which is installed by default on MacOS. The <a href="http://www.postfix.org/MULTI_INSTANCE_README.html">README</a> linked above is a pretty clear guide to how to do this. This should be read carefully.</p>
+
+<p><b>**</b></p>
+
+<p><b>Sections below are functional but the documentation for the public is not totally complete.</b></p>
+
+<p><b>**</b></p>
+
+<p><b>1. No changes to the default postfix LaunchDaemon: Leave it running to handle system mail and to send mail.</b></p>
+<p>Further, according to the postfix documentation for postmulti, at least one instance of the default instance must be running.</p>
+
+<p><b>2. Enable multiple postfix instances with postmulti:</b></p>
+
+<p>See <a href="http://www.postfix.org/MULTI_INSTANCE_README.html#init">http://www.postfix.org/MULTI_INSTANCE_README.html#init</a> for a step by step description. but, basically:</p>
+
+<pre><code># postmulti -e init</code></pre>
+
+<p>gets you there.</p>
+
+<p><b>3. Configure the new postfix instance ("postfix-in"):</b></p>
+
+<p>In the README, instructions for a null-client and an output instance are listed, but the default Mac postfix configuration already includes those in the default instance so we don't need to bother with that.</p>
+
+<p>Create the input instance postfix-in:</p>
+
+<pre><code># postmulti -I postfix-in -G mta -e create</code></pre>
+
+<p>Now, configure the postfix input instance:</p>
+
+<p>See the write-up in <a href="http://www.postfix.org/MULTI_INSTANCE_README.html">http://www.postfix.org/MULTI_INSTANCE_README.html</a> regarding the "input instance." This pretty clearly will get you up and running.
+
+<p><b>4. Start the postfix.in instance with postmulti with appropriate command line options:</b></p>
+
+<pre><code># postmulti -i postfix-in -x postconf -e "master_service_disable =" "authorized_submit_users = root"
+# postmulti -i postfix-in -e enable
+# postmulti -i postfix-in -p start</code></pre>
+
+<p>After the postfix.in instance is running, you can stop and start all postfix instances with:</p>
+
+<pre><code>postfix stop
+postfix start</code></pre>
+
+<p>However, we'll let the default instance take care of itself. You can deal with your new input instance like so:</p>
+
+<pre><code># postmulti -i postfix-in -p start
+# postmulti -i - -p stop
+# postmulti -i postfix-in -p status
+# postmulti -i postfix-in -p flush
+# postmulti -i postfix-in -p reload</code></pre>
+
+<p>The use of these commands should be self-apparent.</p>
+
+<p><b>5. Test mail sending and receiving from local and remote sources:</b></p>
+
+<p><b>6. Configure launchd to enable and start postfix-in instance at boot:</b></p>
+
+<p>We'll now create a LaunchDaemon which will start postfix-in on start
+
+<p>The command 'postmulti -i postfix-in -p start' will be used in the LaunchAgent plist. This will start the input instance on login by the user(s) - and automatically stop it on log out by using SIGTERM. This is not the postfix way but it appears that MacOS treats the default postfix installation and instances that way without problem, so we will depend on launchd.</p>
+
+</p>a. Create the postfix-in plist:</p>
+
+<pre><code><?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+        <key>Label</key>
+        <string>org.postfix.in</string>
+        <key>Program</key>
+        <string>/usr/libexec/postfix/master</string>
+        <key>ProgramArguments</key>
+        <array>
+                <string>postmulti</string>
+                <string>-i</string>
+                <string>postfix.in</string>
+                <string>-p</string>
+                <string>start</string>
+        </array>
+        <key>RunAtLoad</key>
+        <key>KeepAlive</key>
+</dict>
+</plist></code></pre>
+
+<p>Copy this into /Library/LaunchDaemons/ as org.postfix.in.plist</p>
+
+<p>b. Enable service</p>
+
+<pre><code>sudo launchctl enable system/org.postfix.in</code></pre>
+
+<p>Doing this marks the LaunchAgent as active/executable. This means it will be started on boot/reboot, if so configured.
+
+<p>Check if the new LaunchDaemon is enabled:</p>
+
+<pre><code>sudo launchctl print system | grep postfix</code></pre>
+
+<p>Check which are enabled ("false") or disabled "true")</p>
+
+<pre><code>sudo launchctl print-disabled system</code></pre>
+
+<p>d. Start service:</p>
+
+<p>(Only necessary if starting after boot. The service should start fine during boot.)
+
+<pre><code>sudo launchctl kickstart system/org.postfix.in</code></pre>
+
+<p>Check if running:</p>
+
+<pre><code>sudo postfix status</code></pre>
+
+
+<p><b>7. (Alternate - deprecated) Configure a LogoutHook
+
+<p>At this time, I have not found a convenient way to call a script on logout. MacOS still provides LoginHooks and LogoutHooks. Develpers have been warned that these are deprecated and may be removed but, at this time are still functional. A clean solution for scripts/commands to be run at logout, shutdown, restart, etc. using launchd has no been documented.</p>
+
+<p>So, to stop the posfix-in instance on logout, you would:</p>
+
+<p>a. Create the LogoutHook:</p>
+
+<pre><code>sudo defaults write com.apple.loginwindow LogoutHook /path/to/logoutscript</code></pre>
+
+<p>b. Create the logout script:</p>
+
+<pre><code>#!/bin/sh
+postmulti -i - -p stop</code></pre>
+
+<p>This is not optimal because the postfix.in instance is an MTA for all accounts on the mailserver and runs as root. If user1 logsout then user2 logs in to the same Mac, user2 will not be able to check his mail. 
+
+
+<p>Much simpler. Although, again, spinning up a local mailserver for users in the network is preferred. The users can interact with email with the client of their choice and the employer can control and preserve the internal emails as is sometimes required by law or may become very important for HR.</p>
+
+<p></br></p>
+
+<p>Posted by Gordon, No Hair Github Pages, April 12, 2020; revised March 30, 2022.</p>
+
+<p>&copy; nohair.net and the author</p>
+
+	  </div class="twelve columns">
+    
+	</div class="row">
+
+ <!-- End Post body -->
+
+ <!-- Footer --> 
+	<div class="row">
+      <div class="twelve columns" style="text-align: center;">
+		<p>For comments, corrections, and addenda, email: gordon[AT]baskin.online</p>
+		<p><a href="./index.html">Github Pages index</a></p></br>
+	  </div class="twelve columns">
+	</div class="row">
+    
+ <!-- End Footer -->
+
+  </div class="container">
+
+<!-- End Document -->
+
+</body>
+</html>

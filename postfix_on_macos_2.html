@@ -4,7 +4,7 @@
 
   <!-- Basic Page Needs -->
   <meta charset="utf-8">
-  <title>No Hair Github Pages: Using Postfix on MacOS 11 and 12 - Part 2</title>
+  <title>No Hair Github Pages: Using Postfix on MacOS 11+ - Part 2 (Deprecated)</title>
   <meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
   <meta name="generator" content="GSB">
   <meta name="description" content="Various items of interest to the authors">
@@ -51,7 +51,7 @@ rel="icon" type="image/x-icon" />
     <div class="row">
 		
       <div class="twelve columns" style="margin-top: 4%; text-align: center;">
-        You are here: <a href="./index.html">Home</a>  > <a href="./postfix_on_macos_2.html">Postfix on macos - 2</a></br>
+        You are here: <a href="./index.html">Home</a>  > <a href="./postfix_on_macos.html">Postfix on macos - 2</a></br>
       </div class="twelve columns">
       
       <div class="twelve columns" style="margin-top: 3%; text-align: center; background: url('./sunset_2018.jpg') no-repeat center;">
@@ -67,171 +67,277 @@ rel="icon" type="image/x-icon" />
 	<div class="row">
 	
 	  <div class="twelve columns" style="margin-top: 3%; text-align: center;">
-		<h5><b>Using Postfix as MTA on MacOS - 2: postmulti</b></h5>
+		<h5><b>Using Postfix as MTA on MacOS - Part 2: Deprecated</b></h5>
 	  </div class="twelve columns">
 
 	  <div class="twelve columns" style="margin-top: 3%; text-align: left;">
 		
-<p><b>launchd, launchctl, postfix and postmulti on MacOS 11 'Big Sur' and 12 'Monterey'</b></p> 
+<p><b>launchd, launchctl, and postfix on MacOS 11 'Big Sur' and 12 'Monterey'</b></p> 
 
 <p>or</p>
 
-<p><b>Enable postfix to receive mail from remote hosts on MacOS</b></p>
-
-<p>As noted in part 1, MacOS uses postfix as the default MTA. The postfix instance receives mail from local daemons. In addition, no postfix configuration changes are necessary to send mail from the default MacOS instance to local or remote machines with a listening smtpd on port 25. This is outlined in <a href="./postfix_on_macos.html">Part 1</a>.
-
-<p>Thus, the Apple default postfix instance is similar to a <a href="http://www.postfix.org/MULTI_INSTANCE_README.html#split">postfix null client</a> and a basic outgoing mail client. Here is the last stanza of /etc/postfix/main.cf on MacOS 12.3.1:</p>
-
-<pre><code># Apple Defaults
-#
-message_size_limit = 10485760
-mailbox_size_limit = 0
-biff = no
-mynetworks = 127.0.0.0/8, [::1]/128
-smtpd_client_restrictions = permit_mynetworks permit_sasl_authenticated permit
-recipient_delimiter = +
-tls_random_source = dev:/dev/urandom
-smtpd_tls_ciphers = medium
-
-inet_interfaces = loopback-only</code></pre>
-
-<p>The default postfix instance is listening only on localhost for mail sent from cron, other system daemons, and by the 'mail' command in Terminal. (Although, in the Apple implementation, the process is not on and continually listening, it is triggered by launchd when a message is sent to /var/spool/postfix/maildrop.)
-
-<p>To get a fully functional MTA, we can just leave that default postfix instance alone and add on another postfix instance which recieves mail from remote hosts. This is much simpler than the rigaramole we had to go through in Part 1 - although that's a nice introductory exercise to launchd and launchctl. For this, we will use <a href="http://www.postfix.org/postmulti.1.html">postmulti</a>, a standard compnent of postfix installs which is installed by default on MacOS. The <a href="http://www.postfix.org/MULTI_INSTANCE_README.html">README</a> linked above is a pretty clear guide to how to do this. This should be read carefully.</p>
+<p><b>One way to enable postfix to receive mail on MacOS</b></p>
 
 <p><b>**</b></p>
-
-<p><b>Sections below are functional but the documentation for the public is not yet completed</b></p>
-
+<p><b>This has been superceded by a different approach based on postmulti.</b></p>
+<p><b>Please see <a href="./postfix_on_macos_2.html">Postfix as MTA on macos 2: Using postmulti</a></br></p>
 <p><b>**</b></p>
 
-<p><b>1. No changes to the default postfix LaunchDaemon: Leave it running to handle system mail and to send mail.</b></p>
-<p>Further, according to the postfix documentation, at least one instance of the default instance must be running.</p>
+<p>To receive mail, an SMTP server must be running and listening on the appropriate port. For MacOS, postfix is the default but you could install another like OpenSMTPD - which is easier to configure and setup than postfix. OTOH, using the base MacOS components is fairly convoluted. You need to:</p>
 
-<p><b>2. Enable multiple postfix instances with postmulti:</b></p>
+<p>1. stop and disable the existing postfix LaunchDaemon which stops and starts periodically,</p>
 
-<p>See <a href="http://www.postfix.org/MULTI_INSTANCE_README.html#init">http://www.postfix.org/MULTI_INSTANCE_README.html#init</a> for a step by step description. but, basically:</p>
+<p>2. create a new launchd process (LaunchAgent) which starts postfix and have postfix listen to the appropriate ports and to continue running,</p>
 
-<pre><code># postmulti -e init</code></pre>
+<p>3. edit postfix master.cf and main.cf for sending and receiving messages,</p>
 
-<p>gets you there.</p>
+<p>4. bootstrap the new LaunchAgent for debugging
 
-<p><b>3. Configure the new postfix instance ("postfix-in"):</b></p>
+<p>5. finally, enable the new LaunchAgent</p>
 
-<p>In the README, instruction s for a null-client and an output instance are listed, but the default Mac postfix configuration already includes those in the default instance so we don't need to bother with that.</p>
+<p>6. kickstart the new LaunchAgent</p>
 
-<p>Create the input instance postfix-in:</p>
+<p><b>1. Stop and disable the existing postfix LaunchDaemon</b><p>
 
-<pre><code># postmulti -I postfix-in -G mta -e create</code></pre>
+<p>In MacOS 11 Big Sur and 12 Monterey, the /System/Library/LaunchAgents and /System/Library/LaunchDaemons are in the protected volume and changes to these are prevented by System Integrity Protection (SIP). You can stop the initialized postfix LaunchDaemon. You can disable it with launchctl. But, you can't edit the postfix plist. The disabled postfix LaunchDaemon will still be started at the next boot because it is in the override database. To change this override you need to boot into recovery mode (to bypass SIP) and edit the override database plist. Or, you need to write a shell script that unloads and disables the default postfix LaunchDaemon then starts your new replacement postfix LaunchAgent at boot.</p>
 
-<p>Now, configure the postfix input instance:</p>
+<p>We will do that later, but now to setup and debug our new postfix LaunchAgent, lets stop then disable the default postfix LaunchDaemon.</p>
 
-<p>See the write-up in <a href="http://www.postfix.org/MULTI_INSTANCE_README.html">http://www.postfix.org/MULTI_INSTANCE_README.html</a> regarding the "input instance." This pretty clearly will get you up and running.
+<p>Check out manlaunchctl:</p>
 
-<p><b>4. Start the postfix.in instance with postmulti with appropriate command line options:</b></p>
+<pre><code>kill signal-name | signal-number service-target
+Sends the specified signal to the specified service if it is running. The signal number
+or name (SIGTERM, SIGKILL, etc.) may be specified.</code></pre>
 
-<pre><code># postmulti -i postfix-in -x postconf -e "master_service_disable =" "authorized_submit_users = root"
-# postmulti -i postfix-in -e enable
-# postmulti -i postfix-in -p start</code></pre>
+<pre><code>enable | disable service-target
+Enables or disables the service in the requested domain. Once a service is disabled, it
+cannot be loaded in the specified domain until it is once again enabled. <b>This state
+persists across boots of the device.</b> This subcommand may only target services within
+the system domain or user and user-login domains</code></pre>.
 
-<p>After the postfix.in instance is running, you can stop and start all postfix instances with:</p>
+<p>You can check the status of system LaunchAgents and LaunchDaemons with</p>
 
-<pre><code>postfix stop
-postfix start</code></pre>
+<pre><code>sudo launchctl print system</code></pre>
 
-<p>However, we'll let the default instance take care of itself. You can deal with your new input instance like so:</p>
+<p>To stop the default postfix LaunchDaemon reversibly:</p>
 
-<pre><code># postmulti -i postfix-in -p start
-# postmulti -i - -p stop
-# postmulti -i postfix-in -p status
-# postmulti -i postfix-in -p flush
-# postmulti -i postfix-in -p reload</code></pre>
+<pre><code>sudo launchctl kill SIGTERM system/com.apple.postfix.master</code></pre>
 
-<p>The use of these commands should be self-apparent.</p>
+<p>To disable the default postfix LaunchDaemon reversibly:</p>
 
-<p><b>5. Test mail sending and receiving from local and remote sources:</b></p>
+<pre><code>sudo launchctl disable system/com.apple.postfix.master</code></pre>
 
-<p><b>6. Configure launchd to enable and start postfix-in instance at boot:</b></p>
-
-<p>We'll now create a LaunchDaemon which will start postfix-in on start
-
-<p>The command 'postmulti -i postfix-in -p start' will be used in the LaunchAgent plist. This will start the input instance on login by the user(s) - and automatically stop it on log out by using SIGTERM. This is not the postfix way but it appears that MacOS treats the default postfix installation and instances that way without problem, so we will depend on launchd.</p>
-
-</p>a. Create the postfix-in plist:</p>
-
-<pre><code><?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-        <key>Label</key>
-        <string>org.postfix.in</string>
-        <key>Program</key>
-        <string>/usr/libexec/postfix/master</string>
-        <key>ProgramArguments</key>
-        <array>
-                <string>postmulti</string>
-                <string>-i</string>
-                <string>postfix.in</string>
-                <string>-p</string>
-                <string>start</string>
-        </array>
-        <key>RunAtLoad</key>
-        <key>KeepAlive</key>
-</dict>
-</plist></code></pre>
-
-<p>Copy this into /Library/LaunchDaemons/ as org.postfix.in.plist</p>
-
-<p>b. 'Bootstrap' org.postfix.in: This identifies and registers it as system launchd process:</p>
-
-<pre><code>sudo launchctl bootstrap system /Library/LaunchAgents/org.postfix.in.plist</code></pre>
-
-<p>c. Enable service</p>
-
-<pre><code>sudo launchctl enable system/org.postfix.in</code></pre>
-
-<p>Doing this marks the LaunchAgent as active/executable. This means it will be started on boot/reboot, if so configured.
-
-<p>Check if the new LaunchDaemon is enabled:</p>
+<p>Now, recheck whats enabled and disabled:</p>
 
 <pre><code>sudo launchctl print system | grep postfix</code></pre>
 
+<p>Yielding</p>
+
+<pre><code>...
+disabled services = {
+{
+	...
+	"com.apple.postfix.master" => true
+	...
+	}
+}</code></pre>
+
+<p>"true" means disabled and "false" means enabled. Disabling the default postfix LaunchDaemon does not unload the program. It has been initialized by launchd and will still start on the next boot when it will be enabled and started again. But for now, it's off and will stay off until the next boot or reboot.</p>
+
+<p><b>2. Create a new LaunchAgent for postfix</b></p>
+
+<p>You can't edit the existing one as it is located in the /System/Library/ which is part of the read-only system volume. So, make a copy in /Library/LaunchAgents.</p>
+
+<pre><code>sudo cp /System/Library/LaunchDaemons/com.apple.postfix.master.plist /Library/LaunchAgents/org.postfix.custom.plist</code></pre>
+
+<p>[As an aside, the function of the various daemons and agents managed by launchd is determined by configuration files in the following folders:</p>
+
+<p>/System/Library/LaunchDaemons: Apple-supplied system daemons (start on boot)</p>
+
+<p>/System/Library/LaunchAgents:- Apple-supplied agents that apply to all users on a per-user basis (which start on any user login)<p>
+
+<p>/Library/LaunchDaemons: User or third-party system daemons (start on boot)</p>
+
+<p>/Library/LaunchAgents: User or third-party agents that apply to all users on a per-user basis (start on any user login)</p>
+									
+<p>~/Library/LaunchAgents: Third-party agents that apply only to the logged-in user (start on user login)]</p>
+
+<p>Edit our new org.postfix.custom.plist:</p>
+
+<pre><code>sudo nano -w /Library/LaunchAgents/org.postfix.custom.plist</code></pre>
+   
+<p>Like so:</p>
+   
+<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"&gt;
+&lt;plist version="1.0"&gt;
+&lt;dict&gt;
+        &lt;key&gt;Label&lt;/key&gt;
+        &lt;string&gt;org.postfix.custom&lt;/string&gt;
+        &lt;key&gt;Program&lt;/key&gt;
+        &lt;string&gt;/usr/libexec/postfix/master&lt;/string&gt;
+        &lt;key&gt;ProgramArguments&lt;/key&gt;
+        &lt;array&gt;
+                &lt;string&gt;master&lt;/string&gt;
+                &lt;string&gt;-c&lt;/string&gt;
+                &lt;string&gt;/private/etc/postfix.custom/&lt;/string&gt;
+        &lt;/array&gt;
+        &lt;key&gt;KeepAlive&lt;/key&gt;
+        &lt;true/&gt;
+&lt;/dict&gt;
+&lt;/plist&gt;</code></pre>
+
+<p>So, basically, this starts postfix using the configuration file in the config directory /private/etc/postfix.custom/, and keeps it running.</p>
+
+<p><b>3. Create the alternate config directory and edit master.cf and main.cf.</b></p>
+
+<p>The configuration files for postfix are found in /private/etc/postfix. We will not change that as we may want to go back to the default setup easily. So, we make a new directory copying all the config files.</p>
+
+<pre></code>sudo cp -R /private/etc/postfix /private/etc/postfix.custom</code></pre>
+
+<p>Now backup the main.cf file:</p>
+
+<pre><code>sudo cp /private/etc/postfix.custom/main.cf /private/etc/postfix.custom/main.cf.default</code></pre>
+
+<p>Edit /private/etc/postfix/main.cf: Just go to the bottom of the file and add your configuration directives.</p>
+
+<pre><code>sudo nano -w /private/etc/postfix.custom/main.cf</code></pre>
+	
+<p>Comment out this line at end of main.cf</p>
+
+<pre><code># Apple defaults
+...
+#inet_interfaces = loopback-only</code></pre>
+
+<p>Add these line below the Apple defaults:</p>
+   
+<pre><code>myhostname = hostname.domain.tld
+inet_interfaces = all</code></pre>
+	
+<p>No change is necessary to/private/etc/postfix/master.cf but back the default file up in case you decide to experiment.</p>
+
+<pre><code>sudo cp /private/etc/postfix.custom/master.cf /private/etc/postfix.custom/main.cf.default</code></pre>
+
+<p><b>4. 'Bootstrap' org.postfix.custom:</b> This identifies and registers it as system launchd process:</p>
+
+<pre><code>sudo launchctl bootstrap system /Library/LaunchAgents/org.postfix.custom.plist</code></pre>
+	
+<p>See man launchctl:</p>
+
+<pre><code>bootstrap | bootout domain-target [service-path service-path2 ...] | service-target
+
+Bootstraps or removes domains and services. When service arguments are present, bootstraps
+and correspondingly removes their definitions into the domain.  Services may be specified
+as a series of paths or a service identifier.  Paths may point to XPC service bundles,
+launchd.plist(5) s, or a directories containing a collection of either. If there were one
+or more errors while bootstrapping or removing a collection of services, the problematic
+paths will be printed with the errors that occurred.
+
+If no paths or service target are specified, these commands can either bootstrap or remove
+a domain specified as a domain target. Some domains will implicitly bootstrap pre-defined
+paths as part of their creation.
+			  
+Note: For instance, when referring to a service with the identifier com.apple.example
+loaded into the GUIdomain of a user with UID 501, domain-target is gui/501/,service-name
+is com.apple.example, and service-target is gui/501/com.apple.example.</code></pre>
+	 
+<p><b>5. Enable service</b></p>
+
+<pre><code>sudo launchctl enable system/org.postfix.custom</code></pre>
+
+<p>Doing this marks the LaunchAgent as active/executable. This means it will be started on boot/reboot, if so configured. Like disabling, enabling persists across reboots. You can check if the service is enabled:</p>
+
+<pre><code>sudo launchctl print system | grep postfix</code></pre>
+	
 <p>Check which are enabled ("false") or disabled "true")</p>
 
 <pre><code>sudo launchctl print-disabled system</code></pre>
 
-<p>d. Start service:</p>
+<p><b>6. Start service:</b></p>
 
-<pre><code>sudo launchctl kickstart system/org.postfix.in</code></pre>
+<pre><code>sudo launchctl kickstart system/org.postfix.custom</code></pre>
 
-<p>Check if running:</p>
+<p><b>7. Check if running:</b></p>
 
 <pre><code>sudo postfix status</code></pre>
 
+<p>or</p>
 
-<p><b>7. (Alternate - deprecated) Configure a LogoutHook
+<pre><code>ps aux | grep postfix</code></pre>
 
-<p>At this time, I have not found a convenient way to call a script on logout. MacOS still provides LoginHooks and LogoutHooks. Develpers have been warned that these are deprecated and may be removed but, at this time are still functional. A clean solution for scripts/commands to be run at logout, shutdown, restart, etc. using launchd has no been documented.</p>
+<p><b>8. Test by sending a message from a network computer:</b></p>
 
-<p>So, to stop the posfix-in instance on logout, you would:</p>
+<pre><code>mail -s "Test message from alpha" joe@mac.domain.tld
+This is a test of postfix recieving emails from lan computer
+Peace
+^D
+EOT</code></pre>
 
-<p>a. Create the LogoutHook:</p>
+<p><b>9. Now check if the message was received by your Mac in terminal:</b></p>
 
-<pre><code>sudo defaults write com.apple.loginwindow LogoutHook /path/to/logoutscript</code></pre>
+<pre><code>mail</code></pre>
 
-<p>b. Create the logout script:</p>
+<p>Now, you're set.</p>
+
+<p><b>**</b></p>
+<p><b>Sections below are incorrect/under testing - needs to be revised.</b></p>
+<p><b>**</b></p>
+
+<p>But if you reboot or boot, the default postfix LaunchAgent will be restarted. The new custom postfix process should also be started. Check as above. So, kill the default process:</p>
+
+<pre><code>launchctl kill SIGTERM system/com.apple.postfix.master
+launchctl disable system/com.apple.postfix.master</code></pre>
+
+<p>If you want to prevent this, you can write a script to run at boot, like so:</p>
 
 <pre><code>#!/bin/sh
-postmulti -i - -p stop</code></pre>
+if [ "$(launchctl print-disabled system | grep com.apple.postfix | grep -o '[^ ]*$')" = 'true' ];
+ then
+        #Default postfix disabled -> nop
+        exit 0;
 
-<p>This is not optimal because the postfix.in instance is an MTA for all accounts on the mailserver and runs as root. If user1 logsout then user2 logs in to the same Mac, user2 will not be able to check his mail. 
+ else
+        #Default postfix enabled - switch to postfix.custom
+        #Killing and disabling default postfix service
+        launchctl kill SIGTERM system/com.apple.postfix.master
+        launchctl disable system/com.apple.postfix.master
+        #Enabling and starting postfix.custom
+        launchctl enable system/org.postfix.custom
+        launchctl kickstart system/org.postfix.custom
+        exit 0;
+fi</code></pre>
 
+<p>and another to run at shutdown:</p>
 
-<p>Much simpler. Although, again, spinning up a local mailserver for users in the network is preferred. The users can interact with email with the client of their choice and the employer can control and preserve the internal emails as is sometimes required by law or may become very important for HR.</p>
+<pre><code>#!/bin/sh
+if [ "$(launchctl print-disabled system | grep com.apple.postfix | grep -o '[^ ]*$')" = 'true' ];
+ then
+        #Default postfix disabled
+	    launchctl kill SIGTERM system/org.postfix.custom
+        launchctl disable system/org.postfix.custom
+        exit 0;
+
+ else
+        #Default postfix enabled -> nop
+        exit 0;
+fi</code></pre>
+
+Now reboot</b> and see that the default postfix LaunchDaemon is not running and the new custom postfix LaunchAgent is, and that it is working as expected.</p>
+
+<p><b>Revert to default postfix configuration</b></p>
+
+<pre><code>sudo launchctl disable system/org.postfix.custom
+sudo launchctl enable system/com.apple.postfix.master</code></pre>
+
+<p>Then, disable the post-boot and pre-shutdown scripts as above.</p>
+
+<p>Of course, this is totally insecure and so 1970, but for quick messages in a trusted network or to receive messages sent from, say, a firewall or mailserver, it's ok. It's also useful to debug your setup as you are building a mail server prior to bolting on Dovecot, SASL, DKIM, DMARc, etc, etc.</p>
+
+<p>However, a more typical solution is to spin up a local mailserver on the network and have the messages from the hosts/appliances forward to that machine to be checked as desired. That can be combined with a loghost for a single point of reporting and management which can be checked from local or remote workstations by the admins.</p>
 
 <p></br></p>
 
-<p>Posted by Gordon, No Hair Github Pages, April 12, 2020; revised March 30, 2022.</p>
+<p>Posted by Gordon, No Hair Github Pages, April 12, 2020; revised April 20, 2022.</p>
 
 <p>&copy; nohair.net and the author</p>
 
@@ -244,7 +350,7 @@ postmulti -i - -p stop</code></pre>
  <!-- Footer --> 
 	<div class="row">
       <div class="twelve columns" style="text-align: center;">
-		<p>For comments, corrections, and addenda, email: gordon[AT]nohair.net</p>
+		<p>For comments, corrections, and addenda, email: gordon[AT]baskin.online</p>
 		<p><a href="./index.html">Github Pages index</a></p></br>
 	  </div class="twelve columns">
 	</div class="row">
