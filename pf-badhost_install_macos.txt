@@ -4,7 +4,7 @@
 ###################################################################
 
 ###################################################################
-# Updated for Mac OS 12.6 'Monterey' 11 by gsb
+# Modified from original and updated for Mac OS 12.6 'Monterey' by gsb
 ###################################################################
 
 ###################################################################
@@ -26,7 +26,7 @@
    NOTE: Make sure you set the "UniqueID" and "PrimaryGroupID" to an unused value!
 	# dscl . -create /Users/_pfbadhost
 	# dscl . -create /Users/_pfbadhost UserShell /sbin/nologin
-	# dscl . -create /Users/_pfbadhost RealName “_pfbadhost"
+	# dscl . -create /Users/_pfbadhost RealName "_pfbadhost"
 	# dscl . -create /Users/_pfbadhost UniqueID 1051  # Pick an unused UID here
 
 	# dscl . -create /Groups/_pfbadhost
@@ -36,8 +36,8 @@
    add:
 	# dscl . -create /Users/_pfbadhost PrimaryGroupID 1051
   
-If you need to find and unused UID and GID, 'dscl . -list /Users UniqueID' and 'dscl . -list /groups PrimaryGroupID'.
-Generally GIDs and UIDs above 1050 are free from use.
+If you need to find an unused UID and GID, use 'dscl . -list /Users UniqueID' and
+'dscl . -list /groups PrimaryGroupID'. Generally GIDs and UIDs above 1050 are free from use.
 
 
 2) Download script:
@@ -126,6 +126,10 @@ Generally GIDs and UIDs above 1050 are free from use.
 10) If this is a laptop or a host which is turned on and off, we can create another script which runs at boot,
     checks if /etc/pf-badhost.txt has been recently updated, and updates it as necessary.
 
+10) If this is a laptop or a host which is turned on and off and you don't want to have this daemon running,
+    we can create another script which runs at boot, checks if /etc/pf-badhost.txt has been recently updated,
+    and updates it as necessary.
+
     nano /usr/local/bin/refresh_pf-badhosts_list
 
     #! /bin/zsh
@@ -184,7 +188,7 @@ Generally GIDs and UIDs above 1050 are free from use.
     # sudo chown root:bin /usr/local/bin/refresh_pf-badhosts_list
     # sudo chmod 755 /usr/local/bin/refresh_pf-badhosts_list
 
-    And now create the LaunchAgent which runs the script at login of any user:
+    And now, if you want to run the script at login, create a LaunchAgent which runs the script at login of any user.
 
     # sudo nano /Library/LaunchAgent/refresh_pf-badhost_list.plist
 
@@ -205,12 +209,16 @@ Generally GIDs and UIDs above 1050 are free from use.
     </dict>
     </plist>
 
+    Or, if you want to run the script at a time of your choice, you can ignore the plists and just run:
+
+    # sudo zsh refresh_pf-badhost_list
 
 11) Setting up a pf firewall in MacOS: There are 3 ways to run pf on MacOS:
     a. You can start pf directly and not invoke any other firewall in System Preferences > Security & Privacy
-    b. You can start Apple's socketfilterfw by selecting System Preferences > Security & Privacy > Firewall and click
-       "Turn On Firewall." But, do not select "Enable stealth mode" under "Firewall Options." Then you can start your own
-       pf. These two firewalls work fine together operating as separate processes.
+    b. You can start Apple's socketfilterfw by selecting System Preferences > Security & Privacy > Firewall
+       and click "Turn On Firewall." But, do not select "Enable stealth mode" under "Firewall Options."
+       Then you can start your own instance of pf. These two firewalls work fine together operating as
+       separate processes.
     c. You can turn on Apple's firewall (socketfilterfw) and also click "Enable stealth mode" to start pf.
        This will start pf but adds additional rules within anchors which block icmp among other things.
 
@@ -261,8 +269,10 @@ Generally GIDs and UIDs above 1050 are free from use.
     block in quick on egress from <pfbadhost>
     block out quick on egress to <pfbadhost>
 
-    The added lines may be overwritten by system updates so check if you update.
-    So back your changes up:
+    Added lines like the table definition and the block commands are overwritten by system updates
+    so check pf.conf after you update.
+
+    Back your changes up:
 
     # sudo nano cp /etc/pf.conf /etc/pf.conf.modified
 
