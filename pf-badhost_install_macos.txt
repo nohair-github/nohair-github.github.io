@@ -4,7 +4,8 @@
 ###################################################################
 
 ###################################################################
-# Modified from original and updated for Mac OS 12.6 'Monterey' by gsb
+# Modified from original and updated for MacOS 12.6 'Monterey'
+# and MacOS 13.5.2 Ventura by gsb
 ###################################################################
 
 ###################################################################
@@ -36,18 +37,41 @@
    add:
 	# dscl . -create /Users/_pfbadhost PrimaryGroupID 1051
   
-If you need to find an unused UID and GID, use 'dscl . -list /Users UniqueID' and
-'dscl . -list /groups PrimaryGroupID'. Generally GIDs and UIDs above 1050 are free from use.
+   If you need to find an unused UID and GID, use 'dscl . -list /Users UniqueID' and
+   'dscl . -list /groups PrimaryGroupID'. Generally GIDs and UIDs above 1050 are free from use.
+
+   You could use a script, like so, editing the data as appropriate:
+
+   # nano setup_pf-badhost_user.zsh
+
+   #!/bin/zsh
+
+   dscl . -create /Users/_pfbadhost
+   dscl . -create /Users/_pfbadhost UserShell /sbin/nologin 
+   dscl . -create /Users/_pfbadhost RealName "_pfbadhost"
+   dscl . -create /Users/_pfbadhost UniqueID 1051
+
+   dscl . -create /Groups/_pfbadhost
+   dscl . -create /Groups/_pfbadhost name _pfbadhost
+   dscl . -create /Groups/_pfbadhost gid 1051 # Pick an unsued number
+   dscl . -create /Groups/_pfbadhost GroupMembership _pfbadhost
+
+   dscl . -create /Users/_pfbadhost PrimaryGroupID 1051
+
+   exit 0
+
+   Edit it then run it with "sudo zsh setup_pf-badhoat_user.zsh"
 
 
-2) Download script:
-	$ curl https://geoghegan.ca/pub/pf-badhost/0.5/pf-badhost.sh
+2) Download pf-badhost script:
+	$ curl https://geoghegan.ca/pub/pf-badhost/0.5/pf-badhost.sh -o pf-badhost.sh
 
 
 3) a. Install script with appropriate permissions:
 	# install -m 755 -o root -g bin pf-badhost.sh /usr/local/bin/pf-badhost
 
-   b. Edit script (if you want) to change 1st line shebang to #!/binzsh
+   b. Edit script (if you want) to change 1st line shebang to #!/bin/zsh
+
 
 4) Create required files:
 	# install -m 640 -o _pfbadhost -g wheel /dev/null /etc/pf-badhost.txt
@@ -57,16 +81,37 @@ If you need to find an unused UID and GID, use 'dscl . -list /Users UniqueID' an
         and:
 	# install -m 640 -o _pfbadhost -g wheel /dev/null /var/log/pf-badhost/pf-update.log
 
-5.a) Install GNU sort and RipGrep:
+   Or, use a script, like so:
+
+   nano setup_pf-badhost_files.zsh
+
+   #!/bin/zsh
+
+   install -m 640 -o _pfbadhost -g wheel /dev/null /etc/pf-badhost.txt
+   install -d -m 755 -o root -g wheel /var/log/pf-badhost
+   install -m 640 -o _pfbadhost -g wheel /dev/null /var/log/pf-badhost/pf-badhost.log
+   install -m 640 -o _pfbadhost -g wheel /dev/null /var/log/pf-badhost/pf-badhost.log.0.gz
+   install -m 640 -o _pfbadhost -g wheel /dev/null /var/log/pf-badhost/pf-update.log
+   exit 0
+
+   Edit, then run it by "sudo zsh setup-pf-badhost_files.zsh"
+
+
+5.a) Install Homebrew:
+        # /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+  b)Install GNU sort and RipGrep:
 	# brew install coreutils ripgrep
 
-5.b) OPTIONAL: Install mawk for improved performance:
+  c) OPTIONAL: Install mawk for improved performance:
 	# brew install mawk
+
 
 6) Give "_pfbadhost" user permission to use sudo without a password:
    Run "sudo visudo" and then add the following line near the end of the file:
 
 	_pfbadhost      ALL = (ALL) NOPASSWD: ALL
+
 
 7) Run pfbadhost as user "_pfbadhost" using the "-O macos" argument:
         # sudo -u _pfbadhost pf-badhost -O macos
@@ -74,6 +119,7 @@ If you need to find an unused UID and GID, use 'dscl . -list /Users UniqueID' an
 8) Check to see if pf-badhost run successfully
    a. Did the file /etc/pf-badhost.txt get updated?
    b. Check the log /var/log/pf-badhost/pf-badhost.log.
+
 
 9) Create a process to update pf-badhost daily
 
@@ -92,15 +138,13 @@ If you need to find an unused UID and GID, use 'dscl . -list /Users UniqueID' an
 	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 	<plist version="1.0">
 	<dict>
-	    <key>Label</key>
+	    <key>InitGroups</key>
+                <true/>
+            <key>Label</key>
 	        <string>nightly.pf-badhost.update</string>
-	    <key>Program</key>
-	        <string>/usr/bin/sudo</string>
 	    <key>ProgramArguments</key>
 	        <array>
-		<string>-u</string>
-		<string>_pfbadhost</string>
-		<string>/usr/local/bin/pf-badhost</string>
+	        <string>/usr/local/bin/pf-badhost</string>
 		<string>-O</string>
 		<string>macos</string>
 	        </array>
@@ -123,66 +167,68 @@ If you need to find an unused UID and GID, use 'dscl . -list /Users UniqueID' an
     </plist>
 
 
-10) If this is a laptop or a host which is turned on and off, we can create another script which runs at boot,
-    checks if /etc/pf-badhost.txt has been recently updated, and updates it as necessary.
+   If this is a laptop or a host which is turned on and off, launchd will not run the script on boot if it was not run
+   at the configured time while the computer was off. It will be run if the computer is on but sleeping.
 
-10) If this is a laptop or a host which is turned on and off and you don't want to have this daemon running,
-    we can create another script which runs at boot, checks if /etc/pf-badhost.txt has been recently updated,
-    and updates it as necessary.
+10) If this is a laptop or a host which is turned on and off and and you want the computer to update the pf-badhost list 
+    if one or more updates were missed whil;e the machine was off, we can create another script which runs at boot. This
+    script checks if /etc/pf-badhost.txt has been recently updated (that is, if it is less than 24 hours old) and updates
+    it as necessary.
 
-    nano /usr/local/bin/refresh_pf-badhosts_list
+    nano /usr/local/bin/refresh_pf-badhosts_on_boot
 
     #! /bin/zsh
-
+            
     # Script (1) checks date of last update of /etc/pf-badhost.txt and, if more than 24 hours,
     # (2) checks if there is an active internet connection, and if so,
-    # (3) runs '/usr/local/bin/pf-badhost -O macos'.
+    # (3) runs '/usr/local/bin/pf-badhost -O macos'.  
     # But, if there is no connection, (4) the script sleeps for 30 sec then retries x 2 then fails.
     # If the pf-badhost list is <24 hours old, nothing is done
     # (and the regular pf-badhost update LaunchAgent will run as scheduled).
 
-    # redirect stdout/stderr to log file
-    exec > /var/log/pf-badhost/pf-update.log 2>&1
-    date
-    if [[ -e /etc/pf-badhost.txt ]]; then
-        file_mtime=$(stat -f %m /etc/pf-badhost.txt)
-        current_time=$(date +%s)
-        file_age=$(($current_time - $file_mtime))
-
-        if [[ $file_age -ge 86400 ]]; then
-            n=0
-            print "\n/etc/pf-badhost.txt is more than 24 hours old - checking for internet connection"
-            if [ "$n" -lt 3 ]; then
-                nc -w5 -z www.binarydefense.com 443 &>/dev/null
-                if [[ $? -eq 0 ]]; then
-                    print "internet connection active"
-                    print "now running '/usr/local/bin/pf-badhost -O macos'"
-                    /usr/local/bin/pf-badhost -O macos
-                    if [[ $? -eq 0 ]]; then
-                        print "pfbadhost completed sucessfully\n"
-                        exit 0
-                    else
-                        print "pf-badhost script did not sucessfully run - exiting\n"
-                        exit 1
-                    fi
-                else
-                    print "internet connection not available - sleeping for 30 seconds ..."
-                    n=$((n+1))
-                    if [[ $n -eq 3 ]]; then
-                        print "internet connection failed - exiting\n"
-                        exit 1
-                    fi
-                fi
-                sleep 30
-            fi
-        else
-            print "/etc/pf-badhost.txt is less than 24 hours old - exiting\n"
-            exit 0
-        fi
-    else
+    print "\n****"
+    print $(date)
+    if [[ ! -e /etc/pf-badhost.txt ]]; then
         print "/etc/pf-badhost.txt does not exist - exiting\n"
         exit 1
     fi
+
+    file_mtime=$(stat -f %m /etc/pf-badhost.txt)
+    current_time=$(date +%s)
+    file_age=$(($current_time - $file_mtime))
+                    
+    if [[ $file_age -lt 86400 ]]; then
+        print "/etc/pf-badhost.txt is less than 24 hours old - exiting\n"
+        exit 0
+    fi
+
+    print "\n/etc/pf-badhost.txt is more than 24 hours old - checking for internet connection"
+    n=0
+    if [[ "$n" -le 3 ]]; then
+        nc -w5 -z www.binarydefense.com 443 &>/dev/null
+        if [[ $? -eq 0 ]]; then
+            print "internet connection active"
+            print "now running '/usr/local/bin/pf-badhost -O macos'" 
+            sudo -u _pfbadhost /usr/local/bin/pf-badhost -O macos
+            if [[ $? -eq 0 ]]; then
+                print "pfbadhost completed sucessfully\n"
+                exit 0
+            else
+                print "pf-badhost script did not sucessfully run - exiting\n"
+                exit 1
+            fi
+        else
+            n=$((n+1))
+            print "internet connection not available - sleeping for 30 seconds ..."
+            sleep 30
+        fi
+    else
+        print "internet connection failed - exiting\n"
+        exit 1
+    fi    
+
+    # Shouldn't reach this point
+    exit 2
 
     Change ownership and permissions on script:
     # sudo chown root:bin /usr/local/bin/refresh_pf-badhosts_list
@@ -190,28 +236,30 @@ If you need to find an unused UID and GID, use 'dscl . -list /Users UniqueID' an
 
     And now, if you want to run the script at login, create a LaunchAgent which runs the script at login of any user.
 
-    # sudo nano /Library/LaunchAgent/refresh_pf-badhost_list.plist
+    # sudo nano /Library/LaunchAgent/refresh_pf-badhost_on_boot.plist
 
     <?xml version="1.0" encoding="UTF-8"?>
     <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
     <plist version="1.0">
     <dict>
         <key>Label</key>
-	        <string>refresh_pf-badhost_list</string>
+	        <string>refresh_pf-badhost_on_boot</string>
         <key>Program</key>
 		<string>/usr/local/bin/refresh_pf-badhost_list</string>
         <key>StandardErrorPath</key>
-		<string>/var/log/pf-badhost/pfctl.log</string>
+		<string>/var/log/pf-badhost/pf-update.log</string>
         <key>StandardOutPath</key>
-		<string>/var/log/pf-badhost/pfctl.log</string>
+		<string>/var/log/pf-badhost/pf-update.log</string>
         <key>RunAtLoad</key>
 		<true/>
     </dict>
     </plist>
 
-    Or, if you want to run the script at a time of your choice, you can ignore the plists and just run:
+    Or, if you want to run the script at a time of your choice, you can ignore the plist, copy (and change to ypur specifications)
+    to your home directory, and just run prn:
 
-    # sudo zsh refresh_pf-badhost_list
+    # sudo zsh $HOME/refresh_pf-badhost_list
+
 
 11) Setting up a pf firewall in MacOS: There are 3 ways to run pf on MacOS:
     a. You can start pf directly and not invoke any other firewall in System Preferences > Security & Privacy
@@ -269,15 +317,13 @@ If you need to find an unused UID and GID, use 'dscl . -list /Users UniqueID' an
     block in quick on egress from <pfbadhost>
     block out quick on egress to <pfbadhost>
 
-    Added lines like the table definition and the block commands are overwritten by system updates
-    so check pf.conf after you update.
+    The added lines like the table definition and the block commands are overwritten by system updates
+    so backup your working pf.conf so you can easily restore after you update.
 
-    Back your changes up:
+    # sudo cp /etc/pf.conf /etc/pf.conf.modified
 
-    # sudo nano cp /etc/pf.conf /etc/pf.conf.modified
 
     iii. Create a LaunchAgent that starts this pf instance on boot:
-    I recommend using the LaunchControl app, but the plist file can be written directly.
     
     # sudo nano /Library/LaunchDaemons/pf.start.plist
 
@@ -307,7 +353,7 @@ If you need to find an unused UID and GID, use 'dscl . -list /Users UniqueID' an
    your text editor of choice and find the "User Configuration Area" near the top   
    of the file where you can enable features by setting their value to "1"
    ---
-   See the "Notes" section below for more info o
+   See the "Notes" section below for more info.
  
    I would recommend you carefully read the part on Bogon Filtering, enable bogon filtering
    for IPv4 and IPv6, but exclude your local subnets in the section a bit further down.
