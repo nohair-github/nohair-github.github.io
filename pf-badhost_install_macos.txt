@@ -234,7 +234,8 @@
     # sudo chown root:bin /usr/local/bin/refresh_pf-badhosts_list
     # sudo chmod 755 /usr/local/bin/refresh_pf-badhosts_list
 
-    And now, if you want to run the script at login, create a LaunchAgent which runs the script at login of any user.
+    And now, if you want to run the script at boot, create a LaunchAgent which runs the script at boot
+    ("RunAtLoad").
 
     # sudo nano /Library/LaunchAgent/refresh_pf-badhost_on_boot.plist
 
@@ -255,8 +256,8 @@
     </dict>
     </plist>
 
-    Or, if you want to run the script at a time of your choice, you can ignore the plist, copy (and change to ypur specifications)
-    to your home directory, and just run prn:
+    Or, if you want to run the script at a time of your choice, you can ignore the plist, copy (and change to
+    your specifications) to your home directory, and just run prn:
 
     # sudo zsh $HOME/refresh_pf-badhost_list
 
