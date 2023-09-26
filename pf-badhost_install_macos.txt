@@ -60,7 +60,8 @@
 
    exit 0
 
-   Edit it then run it with "sudo zsh setup_pf-badhoat_user.zsh"
+   Edit it then run it with "sudo zsh setup_pf-badhoat_user.zsh" as you might want to keep this script around
+   as, ime, the _pfbadhost user was deleted during the update from MacOS 12.6.2 to 12.7.
 
 
 2) Download pf-badhost script:
@@ -168,8 +169,9 @@
     </plist>
 
 
-   If this is a laptop or a host which is turned on and off, launchd will not run the script on boot if it was not run
-   at the configured time because the computer was off. It will be run at the configured time if the computer is sleeping.
+   If this is a laptop or a host which is turned on and off, launchd will not run the script on boot
+   if it was not run at the configured time because the computer was off. It will be run at the configured
+   time if the computer is sleeping.
 
 10) If this is a laptop or a host which is turned on and off and and you want the computer to update the pf-badhost list 
     if one or more updates were missed while the machine was off, we can create another script which runs at boot. This
@@ -233,7 +235,7 @@
     # sudo chown root:bin /usr/local/bin/refresh_pf-badhosts_list
     # sudo chmod 755 /usr/local/bin/refresh_pf-badhosts_list
 
-    And now, if you want to run the script at login, create a LaunchAgent which runs the script at login of any user.
+    And now, if you want to run the script at login, create a LaunchAgent which runs the script at boot.
 
     # sudo nano /Library/LaunchAgent/refresh_pf-badhost_on_boot.plist
 
@@ -254,8 +256,8 @@
     </dict>
     </plist>
 
-    Or, if you want to run the script at a time of your choice, you can ignore the plist, copy (and change to ypur specifications)
-    to your home directory, and just run prn:
+    Or, if you want to run the script at a time of your choice, you can ignore the plist, change the script to
+    your specifications, copy to your home directory, and just run prn:
 
     # sudo zsh $HOME/refresh_pf-badhost_list
 
