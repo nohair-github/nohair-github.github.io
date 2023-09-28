@@ -21,8 +21,10 @@
 # Fresh Installation Guide
 ###################################################################
 
-1. a.) Create a new user (we'll call ours "_pfbadhost"):
-   The user should be created with default shell of "nologin" and an empty
+1. Create a new user (we'll call ours "_pfbadhost"):
+   The previous in structions used dscl for this. The has been superceded by sysadminctl.
+
+   a.) Deprecated: The user should be created with default shell of "nologin" and an empty
    password (disables password logins)
    NOTE: Make sure you set the "UniqueID" and "PrimaryGroupID" to an unused value!
 	# dscl . -create /Users/_pfbadhost
@@ -62,6 +64,14 @@
 
    Edit it then run it with "sudo zsh setup_pf-badhoat_user.zsh" as you might want to keep this script around
    as, ime, the _pfbadhost user was deleted during the update from MacOS 12.6.2 to 12.7.
+
+   b.) Using sysadminctl for MacOS 11 or later:
+
+   'nologin' users seen in Unix or Linux are not used. In modern MacOS versions, these are termed 'roleAccount'.
+   Some sources suggest that these accounts should have UIDs between 200 and 400. As far as the group ID,
+   you can use staff (20) or localaccounts (61). The commad to create the _pfbadhost user is:
+
+   sudo sysadminctl -addUser _pfbadhost -fullName _pfbadhost -UID 301 -GID 61 -roleAccount
 
 
 2) Download pf-badhost script:
@@ -144,6 +154,8 @@
                 <true/>
             <key>Label</key>
 	        <string>nightly.pf-badhost.update</string>
+	    <key>Program</key>
+	        <string>/usr/local/bin/pf-badhost</string>
 	    <key>ProgramArguments</key>
 	        <array>
 	        <string>/usr/local/bin/pf-badhost</string>
