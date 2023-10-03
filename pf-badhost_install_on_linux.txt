@@ -271,7 +271,7 @@ Here's an abbreviated set up:
       * Re-create a new badhosts list if pf-badhost.txt is updated.
 
    a. Create a systemd service to run at boot and recreate the existing lists from saved versions
-   at /etc/iptables/ipset and to save the lists in the save location on shutdown:
+   at /etc/iptables/ipset and to save the lists in the same location on shutdown:
 
 	$ sudo nano /etc/systemd/system/ipset-persistent.service:
 
@@ -313,7 +313,7 @@ Here's an abbreviated set up:
    b. The next 2 tasks will be handled by scripts run @reboot with cron. The previously described script (see 10 above)
    checks the date of /etc/pf-badhost.txt and, if it is more than 24 hrs since the last update, runs /usr/local/bin/pfbadhost.
 
-   This should be followed by runnung /usr/local/bin/update_badhosts_list_in_ufw (the same scripts detailed above).
+   This should be followed by running /usr/local/bin/update_badhosts_list_in_ufw (the same scripts detailed above).
 
 	$ sudo -u root crontab -e
 
