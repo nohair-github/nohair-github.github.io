@@ -210,23 +210,38 @@ Here's an abbreviated set up:
    3. A script which updates 'badhosts' list from the new /etc/pf-badhost.txt after that is updated.
    This could be a cron job run at reboot and at some time after the daily cron job is run.
 
-	$ sudo nano /usr/local/bin/update_badhosts_list_in_ufw
-
 	#!/usr/bin/env bash
 
-	# Flush existing badhosts list
-	ipset flush badhosts
+	# redirect stdout/stderr to log file
+	exec >> /var/log/pf-badhost/pf-update.log 2>&1
 
-        # Filter new /etc/pf-badhost.txt file and import to badhosts list
-        grep -v -e '^#' -e '^$' -e '^\!' /etc/pf-badhost.txt | xargs -n1 ipset add badhosts
+	# Check if set badhosts exists
+	ipset list -name badhosts
+	if [ "$?" -eq 0 ]; then
+	    # Unload set badhosts from iptables to remove references
+	    iptables -D INPUT -m set --match-set badhosts src -j DROP
+	    iptables -D FORWARD -m set --match-set badhosts src -j DROP 
+	    #iptables -I OUTPUT -m set --match-set badhosts src -j DROP 
 
-	# backup the new ipset 'badhosts'
-        ipset save -file /etc/iptables/ipset
+	    # Remove existing set data
+	    ipset flush badhosts
 
-        # Load badhosts list into iptables INPUT, FORWARD, or OUTPUT chains as desired
+	else
+	    # Create badhosts list
+	    ipset create badhosts hash:net
+
+	fi
+
+	# Filter /etc/pf-badhost.txt file and import to badhosts list
+	grep -v -e '^#' -e '^$' -e '^\!' /etc/pf-badhost.txt | xargs -n1 ipset add badhosts
+
+	# Backup new badhost list
+	ipset save -file /etc/iptables/ipset
+
+	# Load badhosts list into iptables INPUT, FORWARD, or OUTPUT chains as desired
 	iptables -I INPUT -m set --match-set badhosts src -j DROP
-	iptables -I FORWARD -m set --match-set badhosts src -j DROP 
-	#sudo iptables -I OUTPUT -m set --match-set badhosts src -j DROP 
+	iptables -I FORWARD -m set --match-set badhosts src -j DROP
+	#iptables -I OUTPUT -m set --match-set badhosts src -j DROP 
 
    Check the ownership and permissions:
         $ sudo chmod 755 /usr/local/bin/update_badhosts_list_in_ufw
