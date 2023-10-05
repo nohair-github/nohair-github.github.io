@@ -15,9 +15,9 @@ Based on:
 # Table of Contents:
 ###################################################################
 
-* pf-badhost Install Instructions
+* pf-badhost Fresh Install Instructions
 
-* Integration with ufw/iptables/netfilter
+* Integration with ufw/iptables/netfilter using ipset
 
 * Post Install Notes
 
@@ -83,7 +83,7 @@ Based on:
 
    $ sudo nano /usr/local/bin/pf-badhost
 
-  a) Change shebang from '/usr/bin/env ksh' to /usr/bin/env oksh'
+  a) Optional: Change shebang from '/usr/bin/env ksh' to /usr/bin/env oksh' or zsh, etc. See Post Installl Notes below.
 
   b) Optional: Enable Bogon filter (line 95) if you are not blocking these separately: _BOGON_4=1
      If you do this, be sure to exclude local lan addresses from bogon filter if sppropriate:
@@ -97,10 +97,10 @@ Based on:
      ---
      Most options can also be configured via command line flags. See man page for more details.
      ---
-     See the "Notes" section below for more info on installing optional utilities.
+     See the "Post Install Notes" section below for more info on installing optional utilities.
  
 
-7) Comment out lines in pf-badhost calling pfctl (lines 336-340, 639-642, 644-646, and 999-1003).
+   e) Comment out lines in pf-badhost calling pfctl (lines 336-340, 639-642, 644-646, and 999-1003).
 
 
 8) Run pfbadhost as user "_pfbadhost" using the "-O custom", "-Z sudo", and "-F curl" arguments:
@@ -113,7 +113,8 @@ Based on:
 	# crontab -u _pfbadhost -e
 	...
 	SHELL=/bin/sh
-	@daily	sleep $(echo $((RANDOM\%7200+1))); /usr/local/bin/pf-badhost -O custom -Z sudo -F curl >> /var/log/pf-badhost/pf-update.log 2>&1
+	@daily	sleep $(echo $((RANDOM\%7200+1))); /usr/local/bin/pf-badhost -O custom -Z sudo -F curl \
+           >> /var/log/pf-badhost/pf-update.log 2>&1
 	...
 
 10) If this is a computer which is turned off and on, there needs to be a process which runs at boot, checks the age of
@@ -181,15 +182,14 @@ Based on:
 
 	# crontab -u _pfbadhost -e
 	...
-	@reboot	sleep 30; /bin/zsh /usr/local/bin/refresh_pf-badhosts_list_on_boot >> /var/log/pf-badhost/pf-update.log 2>&1
+	@reboot	sleep 30; /bin/zsh /usr/local/bin/refresh_pf-badhosts_list_on_boot \
+           >> /var/log/pf-badhost/pf-update.log 2>&1
 	...
 
 
 ###################################################################
-# Integration with ufw/iptables/netfilter 
+# Integration with ufw/iptables/netfilter using ipset 
 ###################################################################
-
-Integrating pf-badhost generated list '/etc/pf-badhost.txt' with netfilter/iptables/ufw:
 
 Since, unlike pf, netfilter/iptables/ufw does not handle text-based lists, an easier way is to use ipset
 (https://ipset.netfilter.org/ipset.man.html) which adds pf-like handling of lists. How-tos are found at
@@ -203,9 +203,9 @@ Here's an abbreviated set up:
 	sudo apt-get install netfilter-persistent
 
    2. Create a list which will contain the data from /etc/pf-badhost.txt
-	sudo ipset create badhosts nethash
+	sudo ipset create badhosts hash:net
 
-   'nethash' lists require the data to be in CIDR format.
+   'hash:net' lists require the data to be in CIDR format.
 
    3. A script which updates 'badhosts' list from the new /etc/pf-badhost.txt after that is updated.
    This could be a cron job run at reboot and at some time after the daily cron job is run.
@@ -282,8 +282,8 @@ Here's an abbreviated set up:
       * Save the existing ipset lists when the computer is shut down,
       * Reload the badhosts list into iptables from a persistent file on boot,
       * Check the age of the /etc/pf-badhost.txt file on reboot to see if an update has been missed
-        while the computer was off and, if so, run it (already handled above),
-      * Re-create a new badhosts list if pf-badhost.txt is updated.
+        while the computer was off and, if so, run it (already handled in section 10 above),
+      * Re-create a new ipset badhosts list if pf-badhost.txt is updated.
 
    a. Create a systemd service to run at boot and recreate the existing lists from saved versions
    at /etc/iptables/ipset and to save the lists in the same location on shutdown:
