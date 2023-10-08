@@ -58,8 +58,12 @@ Based on:
 	$ ./configure
 	$ make && sudo make install
 
-	Create link to ksh:
+	Create linka to oksh and ksh:
 	$ sudo ln -s /usr/local/bin/oksh /usr/local/bin/ksh
+        $ sudo ln -s /usr/local/bin/oksh /usr/bin/oksh
+        $ sudo ln -s /usr/local/bin/oksh /bin/oksh
+	$ sudo ln -s /usr/local/bin/oksh /usr/bin/ksh
+	$ sudo ln -s /usr/local/bin/oksh /bin/ksh
         $ sudo ln -s /usr/local/bin/oksh /etc/alternatives/ksh
 
 	Add to /etc/shells:
@@ -83,7 +87,8 @@ Based on:
 
    $ sudo nano /usr/local/bin/pf-badhost
 
-  a) Optional: Change shebang from '/usr/bin/env ksh' to /usr/bin/env oksh' or zsh, etc. See Post Installl Notes below.
+  a) Optional: Change shebang from '/usr/bin/env ksh' to oksh, zsh, etc. See Post Installl Notes below.
+     If you use bash, remember that 'print' statements are not handled the same.
 
   b) Optional: Enable Bogon filter (line 95) if you are not blocking these separately: _BOGON_4=1
      If you do this, be sure to exclude local lan addresses from bogon filter if sppropriate:
@@ -112,7 +117,6 @@ Based on:
 9) Edit _pfbadhost crontab to run pf-badhost every night at some time after midnight:
 	# crontab -u _pfbadhost -e
 	...
-	SHELL=/bin/sh
 	@daily	sleep $(echo $((RANDOM\%7200+1))); /usr/local/bin/pf-badhost -O custom -Z sudo -F curl \
            >> /var/log/pf-badhost/pf-update.log 2>&1
 	...
@@ -122,7 +126,7 @@ Based on:
 
 	$ sudo nano /usr/local/bin/refresh_pf-badhosts_file_on_boot
 
-	#! /bin/zsh
+	#! /usr/bin/env oksh
 
 	# Script (1) checks date of last update of /etc/pf-badhost.txt and, if more than 24 hours,
 	# (2) checks if there is an active internet connection, and if so,
@@ -182,7 +186,7 @@ Based on:
 
 	# crontab -u _pfbadhost -e
 	...
-	@reboot	sleep 30; /bin/zsh /usr/local/bin/refresh_pf-badhosts_list_on_boot \
+	@reboot	sleep 30; /bin/oksh /usr/local/bin/refresh_pf-badhosts_list_on_boot \
            >> /var/log/pf-badhost/pf-update.log 2>&1
 	...
 
@@ -210,7 +214,7 @@ Here's an abbreviated set up:
    3. A script which updates 'badhosts' list from the new /etc/pf-badhost.txt after that is updated.
    This could be a cron job run at reboot and at some time after the daily cron job is run.
 
-	#!/usr/bin/env bash
+	#!/usr/bin/env oksh
 
 	# redirect stdout/stderr to log file
 	exec >> /var/log/pf-badhost/pf-update.log 2>&1
@@ -253,7 +257,8 @@ Here's an abbreviated set up:
 	$ sudo -u root crontab -e
 
         ....
-	30 2 * * * /usr/bin/bash /usr/local/bin/update_badhosts_list_in_ufw >> /var/log/pf-badhost/pf-update.log 2>&1
+	30 2 * * * /usr/bin/nice -n 5 /usr/bin/oksh -c "/usr/local/bin/update_badhosts_list_in_ufw \
+           >> /var/log/pf-badhost/pf-update.log 2>&1"
 	....
 
    4. Additional commands to manipluate lists for debugging, etc
@@ -333,7 +338,8 @@ Here's an abbreviated set up:
 	$ sudo -u root crontab -e
 
         ....
-	@reboot sleep 5min; /usr/bin/bash /usr/local/bin/update_badhosts_list_in_ufw >> /var/log/pf-badhost/pf-update.log 2>&1
+	@reboot sleep 300; /usr/bin/nice -n 5 /usr/bin/oksh -c "/usr/local/bin/update_badhosts_list_in_ufw \
+           >> /var/log/pf-badhost/pf-update.log 2>&1"
 	....
 
 
