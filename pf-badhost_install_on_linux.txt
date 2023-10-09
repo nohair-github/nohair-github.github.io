@@ -219,13 +219,22 @@ Here's an abbreviated set up:
 	# redirect stdout/stderr to log file
 	exec >> /var/log/pf-badhost/pf-update.log 2>&1
 
+	print "\n****"
+	print "Running 'update_badhosts_list_in_ufw' script"
+	print $(date)
+
 	# Check if set badhosts exists
-	ipset list -name badhosts
-	if [ "$?" -eq 0 ]; then
-	    # Unload set badhosts from iptables to remove references
-	    iptables -D INPUT -m set --match-set badhosts src -j DROP
-	    iptables -D FORWARD -m set --match-set badhosts src -j DROP 
-	    #iptables -I OUTPUT -m set --match-set badhosts src -j DROP 
+	a=$(ipset list -name badhosts)
+	if [ "$a" = "badhosts" ]; then
+	    #Check if ipset badhosts is loaded into iptables
+	    b=$(iptables -L INPUT | grep -q -m 1 -o 'badhosts')
+            if [ $? -eq 0 ]; then 
+	        # Unload set badhosts from iptables to remove references
+	        print "Unloading set badhosts from iptables to remove references"
+	        iptables -D INPUT -m set --match-set badhosts src -j DROP
+	        iptables -D FORWARD -m set --match-set badhosts src -j DROP 
+	        #iptables -I OUTPUT -m set --match-set badhosts src -j DROP 
+            fi
 
 	    # Remove existing set data
 	    ipset flush badhosts
