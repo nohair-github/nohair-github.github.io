@@ -1,0 +1,452 @@
+###################################################################
+# pf-badhost 0.5 Linux Installation Instructions
+# for Mint Linux, Ubuntu, or Debian 
+# 9/29/23 by gordon
+###################################################################
+
+Based on:
+###################################################################
+# pf-badhost 0.5 FreeBSD Installation Instructions 
+# Copyright 2018-2021 Jordan Geoghegan <jordan@geoghegan.ca>
+###################################################################
+
+
+###################################################################
+# Table of Contents:
+###################################################################
+
+* pf-badhost Fresh Install Instructions
+
+* Integration with ufw/iptables/netfilter using ipset
+
+* Post Install Notes
+
+
+###################################################################
+# Fresh Installation Guide 
+###################################################################
+
+1) Create a new user (we'll call ours "_pfbadhost"):
+   The user should be created as a system account (-r), with a default shell of "/usr/sbin/nologin", no home folder (-M),
+   with no group (-N).
+
+	$ sudo useradd _pfbadhost -M -N -r -s /usr/sbin/nologin
+
+2) Download script:
+	$ curl https://geoghegan.ca/pub/pf-badhost/0.5/pf-badhost.sh -o pf-badhost.sh
+
+3) Install script with appropriate permissions:
+	$ sudo install -m 755 -o root -g bin pf-badhost.sh /usr/local/bin/pf-badhost
+
+4) Create required files:
+	$ sudo install -m 640 -o _pfbadhost -g root /dev/null /etc/pf-badhost.txt
+	$ sudo install -d -m 755 -o root -g root /var/log/pf-badhost
+	$ sudo install -m 640 -o _pfbadhost -g root /dev/null /var/log/pf-badhost/pf-badhost.log
+	$ sudo install -m 640 -o _pfbadhost -g root /dev/null /var/log/pf-badhost/pf-badhost.log.0.gz
+
+	$ sudo install -m 640 -o _pfbadhost -g root /dev/null /var/log/pf-badhost/pf-update.log
+	$ sudo install -m 640 -o _pfbadhost -g root /dev/null /var/log/pf-badhost/pf-update.log.0.gz
+
+5.a) (See Note below regarding shells.) Install oksh shell (portable version of OpenBSD ksh):
+	Download recent package (from OpenBSD 7.3):
+	$ curl https://github.com/ibara/oksh/releases/tag/oksh-7.3 -o Downloads/oksh-7.3.tar.gz
+	
+	Configure and install:
+	$ cd Downloads
+	$ tar -xzf oksh-7.3.tar.gz
+	$ cd oksh-7.3
+	$ ./configure
+	$ make && sudo make install
+
+	Create linka to oksh and ksh:
+	$ sudo ln -s /usr/local/bin/oksh /usr/local/bin/ksh
+        $ sudo ln -s /usr/local/bin/oksh /usr/bin/oksh
+        $ sudo ln -s /usr/local/bin/oksh /bin/oksh
+	$ sudo ln -s /usr/local/bin/oksh /usr/bin/ksh
+	$ sudo ln -s /usr/local/bin/oksh /bin/ksh
+        $ sudo ln -s /usr/local/bin/oksh /etc/alternatives/ksh
+
+	Add to /etc/shells:
+        $ sudo echo "/usr/local/bin/oksh" >> /etc/shells 
+
+     Check that your $PATH includes /usr/local/bin.
+
+  b) Install mawk and ripgrep for improved performance:
+	$ sudo apt-get install mawk ripgrep
+
+6) Edit sudoers file to give privileges to _pfbadhost
+
+   $ sudo visudo
+
+   Insert:
+   
+   _pfbadhost  ALL = (ALL) NOPASSWD: ALL
+
+
+6) Configure pf-badhost script:
+
+   $ sudo nano /usr/local/bin/pf-badhost
+
+  a) Optional: Change shebang from '/usr/bin/env ksh' to oksh, zsh, etc. See Post Installl Notes below.
+     If you use bash, remember that 'print' statements are not handled the same.
+
+  b) Optional: Enable Bogon filter (line 95) if you are not blocking these separately: _BOGON_4=1
+     If you do this, be sure to exclude local lan addresses from bogon filter if sppropriate:
+     Add after line 240: !10.1.1.0/24 (or whatever local lan address range you use)
+
+  d) Check other options and select, including what blacklists you wish to download on schedule.
+     To enable additional features such as IPv6, Subnet Aggregation, Geo-Blocking, 
+     Bogon Filtering or Authlog Scanning open "/usr/local/bin/pf-badhost" with     
+     your text editor of choice and find the "User Configuration Area" near the top   
+     of the file where you can enable features by setting their value to "1"
+     ---
+     Most options can also be configured via command line flags. See man page for more details.
+     ---
+     See the "Post Install Notes" section below for more info on installing optional utilities.
+ 
+
+   e) Comment out lines in pf-badhost calling pfctl (lines 336-340, 639-642, 644-646, and 999-1003).
+
+
+8) Run pfbadhost as user "_pfbadhost" using the "-O custom", "-Z sudo", and "-F curl" arguments:
+	$ sudo -u _pfbadhost pf-badhost -O custom -Z sudo -F curl
+
+   Now check /etc/pf-badhost.txt to see if it updated, and check /var/log/pf-badhost/pf-badhost.log.
+
+
+9) Edit _pfbadhost crontab to run pf-badhost every night at some time after midnight:
+	# crontab -u _pfbadhost -e
+	...
+	@daily	sleep $(echo $((RANDOM\%7200+1))); /usr/local/bin/pf-badhost -O custom -Z sudo -F curl \
+           >> /var/log/pf-badhost/pf-update.log 2>&1
+	...
+
+10) If this is a computer which is turned off and on, there needs to be a process which runs at boot, checks the age of
+    /etc/pf-badnost.txt and runs the /usr/local/bin/pf-badhost script if it is over 24 hours since update.
+
+	$ sudo nano /usr/local/bin/refresh_pf-badhosts_file_on_boot
+
+	#! /usr/bin/env oksh
+
+	# Script (1) checks date of last update of /etc/pf-badhost.txt and, if more than 24 hours,
+	# (2) checks if there is an active internet connection, and if so,
+	# (3) runs '/usr/local/bin/pf-badhost -O custom -Z sudo -F curl.
+	# But, if there is no connection, (4) the script sleeps for 30 sec then retries x 2 then fails.
+	# If the pf-badhost list is <24 hours old, nothing is done
+	# (and the regular pf-badhost update will run as scheduled).
+
+	# redirect stdout/stderr to log file
+	exec >> /var/log/pf-badhost/pf-update.log 2>&1
+
+	print "\n ****"
+	print "Running 'refresh_pf-badhosts_list_on_boot' script"
+	print $(date)
+
+	if [[ ! -e /etc/pf-badhost.txt ]]; then
+	    print "/etc/pf-badhost.txt does not exist - exiting\n"
+	    exit 1
+	fi
+
+	file_mtime=$(stat --format=%W /etc/pf-badhost.txt)
+	current_time=$(date +%s)
+	file_age=$(($current_time - $file_mtime))
+
+	if [[ $file_age -lt 86400 ]]; then
+	    print "/etc/pf-badhost.txt is less than 24 hours old - exiting\n"
+	    exit 0
+	fi
+
+	print "\n/etc/pf-badhost.txt is more than 24 hours old - checking for internet connection"
+
+	for n in {0..2}; do
+	    nc -w5 -z www.binarydefense.com 443 1&>/dev/null
+	    if [[ $? -eq 0 ]]; then
+	        print "internet connection active"
+	        print "now running '/usr/local/bin/pf-badhost -O custom -Z sudo -F curl > /dev/null 2>&1'"
+	        sudo -u _pfbadhost /usr/local/bin/pf-badhost -O custom -Z sudo -F curl > /dev/null 2>&1
+	        if [[ $? -eq 0 ]]; then
+	            print "pfbadhost completed sucessfully\n"
+	            exit 0
+	        else
+	            print "pf-badhost script did not sucessfully run - exiting\n"
+	            exit 1
+	        fi
+	    else
+	        print "server connection not available - sleeping for 30 seconds ..."
+	        sleep 30
+	    fi
+	done
+
+	print "server connection failed - exiting\n"
+	exit 1
+
+	# End
+
+    Add to crontab:
+
+	# crontab -u _pfbadhost -e
+	...
+	@reboot	sleep 30; /bin/oksh /usr/local/bin/refresh_pf-badhosts_list_on_boot \
+           >> /var/log/pf-badhost/pf-update.log 2>&1
+	...
+
+
+###################################################################
+# Integration with ufw/iptables/netfilter using ipset 
+###################################################################
+
+Since, unlike pf, netfilter/iptables/ufw does not handle text-based lists, an easier way is to use ipset
+(https://ipset.netfilter.org/ipset.man.html) which adds pf-like handling of lists. How-tos are found at
+https://confluence.jaytaala.com/pages/viewpageattachments.action?pageId=11763750 and
+https://selivan.github.io/2018/07/27/ipset-save-with-ufw-and-iptables-persistent-and.html.
+
+Here's an abbreviated set up:
+
+   1. Add necessary software:
+	sudo apt-get install ipset
+	sudo apt-get install netfilter-persistent
+
+   2. Create a list which will contain the data from /etc/pf-badhost.txt
+	sudo ipset create badhosts hash:net
+
+   'hash:net' lists require the data to be in CIDR format.
+
+   3. A script which updates 'badhosts' list from the new /etc/pf-badhost.txt after that is updated.
+   This could be a cron job run at reboot and at some time after the daily cron job is run.
+
+	#!/usr/bin/env oksh
+
+	# redirect stdout/stderr to log file
+	exec >> /var/log/pf-badhost/pf-update.log 2>&1
+
+	print "\n****"
+	print "Running 'update_badhosts_list_in_ufw' script"
+	print $(date)
+
+	# Check if set badhosts exists
+	a=$(ipset list -name badhosts)
+	if [ "$a" = "badhosts" ]; then
+	    #Check if ipset badhosts is loaded into iptables
+	    b=$(iptables -L INPUT | grep -q -m 1 -o 'badhosts')
+            if [ $? -eq 0 ]; then 
+	        # Unload set badhosts from iptables to remove references
+	        print "Unloading set badhosts from iptables to remove references"
+	        iptables -D INPUT -m set --match-set badhosts src -j DROP
+	        iptables -D FORWARD -m set --match-set badhosts src -j DROP 
+	        #iptables -I OUTPUT -m set --match-set badhosts src -j DROP 
+            fi
+
+	    # Remove existing set data
+	    ipset flush badhosts
+
+	else
+	    # Create badhosts list
+	    ipset create badhosts hash:net
+
+	fi
+
+	# Filter /etc/pf-badhost.txt file and import to badhosts list
+	grep -v -e '^#' -e '^$' -e '^\!' /etc/pf-badhost.txt | xargs -n1 ipset add badhosts
+
+	# Backup new badhost list
+	ipset save -file /etc/iptables/ipset
+
+	# Load badhosts list into iptables INPUT, FORWARD, or OUTPUT chains as desired
+	iptables -I INPUT -m set --match-set badhosts src -j DROP
+	iptables -I FORWARD -m set --match-set badhosts src -j DROP
+	#iptables -I OUTPUT -m set --match-set badhosts src -j DROP 
+
+   Check the ownership and permissions:
+        $ sudo chmod 755 /usr/local/bin/update_badhosts_list_in_ufw
+        $ sudo chown root:bin /usr/local/bin/update_badhosts_list_in_ufw
+
+
+   Run this as a cron job after the daily pf-badhost job
+
+	$ sudo -u root crontab -e
+
+        ....
+	30 2 * * * /usr/bin/nice -n 5 /usr/bin/oksh -c "/usr/local/bin/update_badhosts_list_in_ufw \
+           >> /var/log/pf-badhost/pf-update.log 2>&1"
+	....
+
+   4. Additional commands to manipluate lists for debugging, etc
+
+   Remove/disable lists in iptables - use the -D flag:
+	$ sudo iptables -D INPUT -m set --match-set badhosts src -j DROP
+	$ sudo iptables -D FORWARD -m set --match-set badhosts src -j DROP 
+
+   Flush values in a list:
+	$ sudo ipset flush badhosts
+
+   List values in a list:
+	$ sudo ipset list badhosts
+
+   Delete a list:
+	$ sudo ipset destroy badhosts
+
+   List the iptables rules without or with number of the rule
+	all chains: $ sudo iptables -L [--line-numbers]
+	a specific chain: $ sudo iptables -L INPUT [--line-numbers]
+
+   Or, review the articles linked above for more.
+
+
+   5. If the computer is rebooted/turned off and on, there are several tasks which need to be done:
+      * Save the existing ipset lists when the computer is shut down,
+      * Reload the badhosts list into iptables from a persistent file on boot,
+      * Check the age of the /etc/pf-badhost.txt file on reboot to see if an update has been missed
+        while the computer was off and, if so, run it (already handled in section 10 above),
+      * Re-create a new ipset badhosts list if pf-badhost.txt is updated.
+
+   a. Create a systemd service to run at boot and recreate the existing lists from saved versions
+   at /etc/iptables/ipset and to save the lists in the same location on shutdown:
+
+	$ sudo nano /etc/systemd/system/ipset-persistent.service:
+
+	[Unit]
+	Description=ipset persistent configuration
+	Before=network.target
+
+	# ipset sets should be loaded before iptables
+	# Because creating iptables rules with names of non-existent sets is not possible
+	Before=netfilter-persistent.service
+	Before=ufw.service
+
+	ConditionFileNotEmpty=/etc/iptables/ipset
+
+	[Service]
+	Type=oneshot
+	RemainAfterExit=yes
+	ExecStart=/sbin/ipset restore -exist -file /etc/iptables/ipset
+
+	# Uncomment to save changed sets on reboot
+	ExecStop=/sbin/ipset save -file /etc/iptables/ipset
+
+	ExecStop=/sbin/ipset flush
+	ExecStopPost=/sbin/ipset destroy
+
+	[Install]
+	WantedBy=multi-user.target
+
+	RequiredBy=netfilter-persistent.service
+	RequiredBy=ufw.service
+
+   After this, start and enable the service:
+
+	# sudo systemctl daemon-reload
+	# sudo systemctl start ipset-persistent
+	# sudo systemctl enable ipset-persistent
+
+
+   b. The next 2 tasks will be handled by scripts run @reboot with cron. The previously described script (see 10 above)
+   checks the date of /etc/pf-badhost.txt and, if it is more than 24 hrs since the last update, runs /usr/local/bin/pfbadhost.
+
+   This should be followed by running /usr/local/bin/update_badhosts_list_in_ufw (the same scripts detailed above).
+
+	$ sudo -u root crontab -e
+
+        ....
+	@reboot sleep 300; /usr/bin/nice -n 5 /usr/bin/oksh -c "/usr/local/bin/update_badhosts_list_in_ufw \
+           >> /var/log/pf-badhost/pf-update.log 2>&1"
+	....
+
+
+Yay! pf-badhost is now installed!
+
+With the nightly cron job, the list will be regularly updated with the latest
+known bad hosts.
+
+Please read the man page for information on how to configure pf-badhost.
+The manpage can be found here: https://www.geoghegan.ca/pub/pf-badhost/0.5/man/man.txt
+
+To receive notification of new pf-badhost releases and updates please send an email
+to 'announce@geoghegan.ca' with a subject line and body of "subscribe pf-badhost"
+
+
+###################################################################
+# Post Install Notes:
+###################################################################
+
+1) To add custom rules or enable features, or add alternate blocklists, 
+   See the "User Configuration Area" located at the top of the script.
+   This area serves as a built in config file, so please feel free to 
+   edit it and experiment with all the features available within.
+   ---
+   Note: Most options can also be configured from the command line
+
+2) Regarding Shells:
+   pf-badhost requires a shell that supports 'typeset' and ksh array syntax.
+   Several shells have been tested and confirmed to work: 
+	* oksh (OpenBSD's ksh)
+	* ksh93
+	* zsh
+	* bash
+   ...
+   
+   If you wish to use one of the above shells, you'll have to make a few changes.
+   To make these changes automatically (replace "zsh" with your preferred shell):
+	# sed -i -e '1 s/ksh/zsh/' /usr/local/bin/pf-badhost
+
+
+3) Regarding Cron Jobs:
+   Over the past year I've noticed a number of list host servers
+   going down at midnight in populated timezones (ie West Coast,
+   East Coast and Western Europe). To be respectful (and to avoid
+   overloading list providers servers) we have cron jobs 
+   scheduled to run at a random time within a defined interval.
+   ---
+   With the new default cron job, pf-badhost will be run every 
+   night at some point between midnight and 2AM, and thus 
+   distributing the load of thousands of queries from numerous
+   users over a 2 hour period rather than a matter of seconds.
+
+
+4) The script is able to detect which (if any) subnet aggregation utilities are 
+   installed and will try to "Do The Right Thing(tm)" and fallback to the best 
+   available option. If no subnet aggregation utility is found, the script
+   will fallback to using a pure Perl IPv4 aggregator if Perl is installed.
+   Despite its name, "aggregate6" supports both IPv4 and IPv6 addresses and is
+   written in Python, whereas the "aggregate" utility supports only IPv4 
+   addresses and is written in C and uses significantly less memory but runs much 
+   slower. For greatly improved performance, aggregate6 can be run with Pypy.
+   If both utilities are installed, the C based "aggregate" utility will be 
+   preferred for IPv4 aggregation, but the script will happily function if only 
+   one or the other is installed (or neither).
+   ---
+   Note: Subnet aggregation can be enabled with the '-A' switch on the commandline.
+
+   * "aggregate" can be installed via: # pkg install aggregate
+   * "aggregate6" can be installed via: # pip install aggregate6
+
+   * For greatly improved aggregation performance, run aggregate6 with Pypy:
+ 
+	# pkg install pypy3
+	# pypy3 -m ensurepip
+	# pypy3 -m pip install aggregate6
+	// Note the Pypy version number, yours may be different!
+	# ln -s /usr/local/pypy3-7.3/bin/aggregate6 /usr/local/bin/aggregate6
+
+   * The experimental aggregator "aggy" can be installed like so:
+	...
+	# pkg install go
+	$ fetch https://geoghegan.ca/pub/aggy/0.1/aggy.go
+	$ go build aggy.go
+	# install -m 755 -o root -g bin aggy /usr/local/bin/aggy
+	...
+
+5) If you would like to update pf-badhost blocklists at a more frequent interval
+   you can use a modified cron job:
+   ---
+   It is essential that you make use of the crontab randomization feature to
+   ensure use of pf-badhost remains respecful of blocklist provider resources.
+   ---
+   The following example runs pf-badhost every 3 hours at a random minute 
+   (this avoids flooding the server with traffic at exactly XX:00)
+   ---
+   Example: Run pf-badhost every 3 to 4 hours
+
+	# crontab -u _pfbadhost -e
+	...
+	0 */3 * * *	sleep $(echo $((RANDOM\%3600+1))) ; pf-badhost -O freebsd
+	...
