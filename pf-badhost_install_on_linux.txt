@@ -1,5 +1,5 @@
 ###################################################################
-# pf-badhost 0.5 Linux Installation Instructions
+# pf-badhost Linux Installation Instructions v0.1
 # for Mint Linux, Ubuntu, or Debian 
 # 9/29/23 by gordon
 ###################################################################
@@ -147,7 +147,7 @@ Based on:
 	    exit 1
 	fi
 
-	file_mtime=$(stat --format=%W /etc/pf-badhost.txt)
+	file_mtime=$(stat --format=%Z /etc/pf-badhost.txt)
 	current_time=$(date +%s)
 	file_age=$(($current_time - $file_mtime))
 
@@ -161,8 +161,8 @@ Based on:
 	for n in {0..2}; do
 	    nc -w5 -z www.binarydefense.com 443 1&>/dev/null
 	    if [[ $? -eq 0 ]]; then
-	        print "internet connection active"
-	        print "now running '/usr/local/bin/pf-badhost -O custom -Z sudo -F curl > /dev/null 2>&1'"
+	        print "Internet connection active"
+	        print "Now running '/usr/local/bin/pf-badhost'"
 	        sudo -u _pfbadhost /usr/local/bin/pf-badhost -O custom -Z sudo -F curl > /dev/null 2>&1
 	        if [[ $? -eq 0 ]]; then
 	            print "pfbadhost completed sucessfully\n"
@@ -195,8 +195,10 @@ Based on:
 # Integration with ufw/iptables/netfilter using ipset 
 ###################################################################
 
-Since, unlike pf, netfilter/iptables/ufw does not handle text-based lists, an easier way is to use ipset
-(https://ipset.netfilter.org/ipset.man.html) which adds pf-like handling of lists. How-tos are found at
+Since, unlike pf, netfilter/iptables/ufw does not handle text-based lists, a way to mimic this is to use
+ipset (https://ipset.netfilter.org/ipset.man.html) which adds pf-like handling of lists.
+
+How-tos are found at:
 https://confluence.jaytaala.com/pages/viewpageattachments.action?pageId=11763750 and
 https://selivan.github.io/2018/07/27/ipset-save-with-ufw-and-iptables-persistent-and.html.
 
@@ -230,7 +232,6 @@ Here's an abbreviated set up:
 	    b=$(iptables -L INPUT | grep -q -m 1 -o 'badhosts')
             if [ $? -eq 0 ]; then 
 	        # Unload set badhosts from iptables to remove references
-	        print "Unloading set badhosts from iptables to remove references"
 	        iptables -D INPUT -m set --match-set badhosts src -j DROP
 	        iptables -D FORWARD -m set --match-set badhosts src -j DROP 
 	        #iptables -I OUTPUT -m set --match-set badhosts src -j DROP 
@@ -289,7 +290,7 @@ Here's an abbreviated set up:
 	all chains: $ sudo iptables -L [--line-numbers]
 	a specific chain: $ sudo iptables -L INPUT [--line-numbers]
 
-   Or, review the articles linked above for more.
+   Or, review the articles linked above or the man pages of ipset and iptables for more.
 
 
    5. If the computer is rebooted/turned off and on, there are several tasks which need to be done:
@@ -300,7 +301,7 @@ Here's an abbreviated set up:
       * Re-create a new ipset badhosts list if pf-badhost.txt is updated.
 
    a. Create a systemd service to run at boot and recreate the existing lists from saved versions
-   at /etc/iptables/ipset and to save the lists in the same location on shutdown:
+   at /etc/iptables/ipset and also to save the lists in the same location on shutdown:
 
 	$ sudo nano /etc/systemd/system/ipset-persistent.service:
 
@@ -339,10 +340,10 @@ Here's an abbreviated set up:
 	# sudo systemctl enable ipset-persistent
 
 
-   b. The next 2 tasks will be handled by scripts run @reboot with cron. The previously described script (see 10 above)
-   checks the date of /etc/pf-badhost.txt and, if it is more than 24 hrs since the last update, runs /usr/local/bin/pfbadhost.
-
-   This should be followed by running /usr/local/bin/update_badhosts_list_in_ufw (the same scripts detailed above).
+   b. The next 2 tasks will be handled by scripts run @reboot with cron. The previously described script
+   (see 10 above) checks the date of /etc/pf-badhost.txt and, if it is more than 24 hrs since the last update,
+   runs /usr/local/bin/pfbadhost. This should be followed by running /usr/local/bin/update_badhosts_list_in_ufw
+   (the same scripts detailed above).
 
 	$ sudo -u root crontab -e
 
