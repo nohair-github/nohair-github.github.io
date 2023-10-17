@@ -105,8 +105,8 @@ Based on:
      See the "Post Install Notes" section below for more info on installing optional utilities.
  
 
-  e) Comment out lines in pf-badhost calling pfctl (lines 336-340, 639-642, 644-646, and 999-1003).
-     This is really a hack job. A more detailed revision is upcoming.
+  e) Comment out lines in pf-badhost calling pfctl (lines 336-340, 639-646, and 997-1000).
+     This is really a hack job, but works. A more proper revision is upcoming.
 
 
 8) Run pfbadhost as user "_pfbadhost" using the "-O custom", "-Z sudo", and "-F curl" arguments:
