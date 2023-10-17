@@ -27,10 +27,10 @@ Based on:
 ###################################################################
 
 1) Create a new user (we'll call ours "_pfbadhost"):
-   The user should be created as a system account (-r), with a default shell of "/usr/sbin/nologin", no home folder (-M),
-   with no group (-N).
+   The user should be created as a system account (-r), with a default shell of "/usr/sbin/nologin",
+   and with no group (-N).
 
-	$ sudo useradd _pfbadhost -M -N -r -s /usr/sbin/nologin
+	$ sudo useradd _pfbadhost -N -r -s /usr/sbin/nologin
 
 2) Download script:
 	$ curl https://geoghegan.ca/pub/pf-badhost/0.5/pf-badhost.sh -o pf-badhost.sh
@@ -47,7 +47,7 @@ Based on:
 	$ sudo install -m 640 -o _pfbadhost -g root /dev/null /var/log/pf-badhost/pf-update.log
 	$ sudo install -m 640 -o _pfbadhost -g root /dev/null /var/log/pf-badhost/pf-update.log.0.gz
 
-5.a) (See Note below regarding shells.) Install oksh shell (portable version of OpenBSD ksh):
+5. a) (See Note below regarding shells.) Install oksh shell (portable version of OpenBSD ksh):
 	Download recent package (from OpenBSD 7.3):
 	$ curl https://github.com/ibara/oksh/releases/tag/oksh-7.3 -o Downloads/oksh-7.3.tar.gz
 	
@@ -58,20 +58,20 @@ Based on:
 	$ ./configure
 	$ make && sudo make install
 
-	Create linka to oksh and ksh:
+	Create links to oksh and ksh:
 	$ sudo ln -s /usr/local/bin/oksh /usr/local/bin/ksh
-        $ sudo ln -s /usr/local/bin/oksh /usr/bin/oksh
-        $ sudo ln -s /usr/local/bin/oksh /bin/oksh
+	$ sudo ln -s /usr/local/bin/oksh /usr/bin/oksh
+	$ sudo ln -s /usr/local/bin/oksh /bin/oksh
 	$ sudo ln -s /usr/local/bin/oksh /usr/bin/ksh
 	$ sudo ln -s /usr/local/bin/oksh /bin/ksh
-        $ sudo ln -s /usr/local/bin/oksh /etc/alternatives/ksh
+	$ sudo ln -s /usr/local/bin/oksh /etc/alternatives/ksh
 
 	Add to /etc/shells:
-        $ sudo echo "/usr/local/bin/oksh" >> /etc/shells 
+	$ sudo echo "/usr/local/bin/oksh" >> /etc/shells 
 
-     Check that your $PATH includes /usr/local/bin.
+   Check that your $PATH includes /usr/local/bin.
 
-  b) Install mawk and ripgrep for improved performance:
+   b) Install mawk and ripgrep for improved performance:
 	$ sudo apt-get install mawk ripgrep
 
 6) Edit sudoers file to give privileges to _pfbadhost
@@ -105,7 +105,8 @@ Based on:
      See the "Post Install Notes" section below for more info on installing optional utilities.
  
 
-   e) Comment out lines in pf-badhost calling pfctl (lines 336-340, 639-642, 644-646, and 999-1003).
+  e) Comment out lines in pf-badhost calling pfctl (lines 336-340, 639-642, 644-646, and 999-1003).
+     This is really a hack job. A more detailed revision is upcoming.
 
 
 8) Run pfbadhost as user "_pfbadhost" using the "-O custom", "-Z sudo", and "-F curl" arguments:
@@ -386,8 +387,9 @@ to 'announce@geoghegan.ca' with a subject line and body of "subscribe pf-badhost
    ...
    
    If you wish to use one of the above shells, you'll have to make a few changes.
-   To make these changes automatically (replace "zsh" with your preferred shell):
-	# sed -i -e '1 s/ksh/zsh/' /usr/local/bin/pf-badhost
+   To make these changes automatically (replace "ksh" with your preferred shell
+   like oksh):
+	# sed -i -e '1 s/ksh/oksh/' /usr/local/bin/pf-badhost
 
 
 3) Regarding Cron Jobs:
