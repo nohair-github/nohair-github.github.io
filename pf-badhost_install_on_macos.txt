@@ -22,7 +22,8 @@
 ###################################################################
 
 1. Create a new user (we'll call ours "_pfbadhost"):
-   The previous in structions used dscl for this. The has been superceded by sysadminctl.
+   The previous instructions used dscl for this. The has been superceded by sysadminctl
+   on MacOS 10.13 and later.
 
    a.) Deprecated: The user should be created with default shell of "nologin" and an empty
    password (disables password logins)
@@ -65,7 +66,7 @@
    Edit it then run it with "sudo zsh setup_pf-badhoat_user.zsh" as you might want to keep this script around
    as, ime, the _pfbadhost user was deleted during the update from MacOS 12.6.2 to 12.7.
 
-   b.) Using sysadminctl for MacOS 11 or later:
+   b.) Using sysadminctl for MacOS 10.13 or later:
 
    'nologin' users seen in Unix or Linux are not used. In modern MacOS versions, these are termed 'roleAccount'.
    Some sources suggest that these accounts should have UIDs between 200 and 400. As far as the group ID,
@@ -134,13 +135,13 @@
 
 9) Create a process to update pf-badhost daily
 
-    a. cron script
+    a. cron script (However, this is not the Apple(R) way and cron may well be deprecated in the future):
+
         # crontab -u _pfbadhost -e
         ...
         @daily  pf-badhost -O macos
         ...
 
-    However, this is not the Apple(R) way and cron may well be deprecated in the future.
 
     b. create a LaunchAgent which runs pf-badhost every night
 
@@ -181,14 +182,21 @@
     </plist>
 
 
-   If this is a laptop or a host which is turned on and off, launchd will not run the script on boot
-   if it was not run at the configured time because the computer was off. It will be run at the configured
-   time if the computer is sleeping.
+   If this is a laptop or a host which is turned on and off, launchd behavior is:
+   - If the computer is off, the launchd job will not be run until the next configured time
+   - If the computer was off at the configured time, the launchd job will not be run on boot
+   
+   However, if the computer is sleeping, layunchd behavior is:
+   - if a desktop is sleeping or a laptop is sleeping with the lid open, the job will be run
+     at the configured time
+   - if a laptop is sleeping with the top closed, the job will not be run at the configured time
+     but will be run when the laptop in 'awakened' by opening the lid and logging in.
 
-10) If this is a laptop or a host which is turned on and off and and you want the computer to update the pf-badhost list 
-    if one or more updates were missed while the machine was off, we can create another script which runs at boot. This
-    script checks if /etc/pf-badhost.txt has been recently updated (that is, if it is less than 24 hours old) and updates
-    it as necessary.
+
+10) If this is a laptop or a host which may be is turned on and off and and you want the computer
+    to update the pf-badhost list if one or more updates were missed while the machine was off,
+    we can create another script which runs at boot. This script checks if /etc/pf-badhost.txt has
+    been recently updated (that is, if it is less than 24 hours old) and updates it as necessary.
 
     # nano /usr/local/bin/refresh_pf-badhosts_on_boot
 
@@ -247,7 +255,16 @@
     # sudo chown root:bin /usr/local/bin/refresh_pf-badhosts_list
     # sudo chmod 755 /usr/local/bin/refresh_pf-badhosts_list
 
-    And now, if you want to run the script at login, create a LaunchAgent which runs the script at boot.
+    And now, if you want to run the script at login, either
+
+    a. create a cron job:
+
+    # crontab -u _pfbadhost -e
+    ...
+    @reboot /usr/local/bin/refresh_pf-badhost_list
+    ...
+
+    b. create a LaunchAgent which runs the script at boot.
 
     # sudo nano /Library/LaunchAgent/refresh_pf-badhost_on_boot.plist
 
