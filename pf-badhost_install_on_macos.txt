@@ -142,7 +142,7 @@
         @daily  pf-badhost -O macos
         ...
 
-
+    Or,
     b. create a LaunchAgent which runs pf-badhost every night
 
         # nano /Library/LaunchDaemons/nightly.pf-badhost.update.plist
@@ -181,16 +181,16 @@
 	</dict>
     </plist>
 
+   This will work on a computer which is on and not sleeping.
 
    If this is a laptop or a host which is turned on and off, launchd behavior is:
-   - If the computer is off, the launchd job will not be run until the next configured time
-   - If the computer was off at the configured time, the launchd job will not be run on boot
+   - If the computer was off at the configured time, the launchd job will not be run on next boot
+   - If the computer was off, the launchd job will not be run until the next configured time after boot
    
-   However, if the computer is sleeping, layunchd behavior is:
-   - if a desktop is sleeping or a laptop is sleeping with the lid open, the job will be run
-     at the configured time
-   - if a laptop is sleeping with the top closed, the job will not be run at the configured time
-     but will be run when the laptop in 'awakened' by opening the lid and logging in.
+   If the computer is sleeping, launchd behavior is:
+   - if a desktop or laptop is sleeping, the job will not be run at the configured time
+     but will be run when the laptop in 'awakened' by opening the lid, tapping the keyboard or mouse
+     to trun the screen on and display the unlock/login screen, or by logging in.
 
 
 10) If this is a laptop or a host which may be is turned on and off and and you want the computer
@@ -264,6 +264,7 @@
     @reboot /usr/local/bin/refresh_pf-badhost_list
     ...
 
+    Or,
     b. create a LaunchAgent which runs the script at boot.
 
     # sudo nano /Library/LaunchAgent/refresh_pf-badhost_on_boot.plist
@@ -352,6 +353,8 @@
 
     # sudo cp /etc/pf.conf /etc/pf.conf.modified
 
+    You can also use commercial software to manage pf, like Murus Firewall (https://www.murusfirewall.com/).
+    Worth a look.
 
     iii. Create a LaunchAgent that starts this pf instance on boot:
     
