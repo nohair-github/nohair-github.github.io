@@ -186,7 +186,8 @@
 
    If this is a laptop or a host which is turned on and off, launchd behavior is:
    - If the computer was off at the configured time, the launchd job will not be run on next boot
-   - If the computer was off at the configured time, the launchd job will be run at the next configured time.
+   - If the computer was off at the configured time, the launchd job will be run at the next configured
+     provided the computer is on.
 
 
 10) If this is a laptop or a host which may be is turned on and off and and you want the computer
