@@ -177,8 +177,6 @@
 			<integer>15</integer>
 		</dict>
 	        </array>
-	    <key>UserName</key>
-	        <string>_pfbadhost</string>
 	</dict>
     </plist>
 
@@ -190,7 +188,7 @@
 
 # Script (1) checks if _pfbadhost user is present (and hasn't been deleted by macos update)
 # (2) checks if there is an active internet connection, and if so,
-# (3) runs '/usr/local/bin/pf-badhost -O macos'.
+# (3) runs '/usr/local/bin/pf-badhost -O macos' as _pfbadhost
 # But, if there is no connection, (4) the script sleeps for 30 sec then retries x 2 then fails.
 
 # redirect stdout/stderr to log file
@@ -242,12 +240,16 @@ exit 1
     # sudo chown root:bin /usr/local/bin/refresh_pf-badhosts_nightly
     # sudo chmod 755 /usr/local/bin/refresh_pf-badhosts_nightly
 
-   This will work on a computer which is on and not sleeping.
+    Now load the LaunchDaemon:
 
-   If this is a laptop or a host which is turned on and off, launchd behavior is:
-   - If the computer was off at the configured time, the launchd job will not be run on next boot
-   - If the computer was off at the configured time, the launchd job will be run at the next configured
-     provided the computer is on.
+    # sudo launchctl bootstrap system refresh_pf-badhost_nightly 
+
+    This will work on a computer which is on and not sleeping.
+
+    If this is a laptop or a host which is turned on and off, launchd behavior is:
+    - If the computer was off at the configured time, the launchd job will not be run on next boot
+    - If the computer was off at the configured time, the launchd job will be run at the next configured
+      provided the computer is on.
 
 
 10) If this is a laptop or a host which may be is turned on and off and and you want the computer
@@ -260,8 +262,9 @@ exit 1
 # refresh_pf-badhosts_on_boot
 
 # Script (1) checks date of last update of /etc/pf-badhost.txt and, if more than 24 hours,
-# (2) checks if there is an active internet connection, and if so,
-# (3) runs '/usr/local/bin/pf-badhost -O macos'.
+# (2) checks if user _pfbadhost is present and, if not, re-creates it,
+# (3) checks if there is an active internet connection, and if so,
+# (3) runs '/usr/local/bin/pf-badhost -O macos' as _pfbadhost.
 # But, if there is no connection, (4) the script sleeps for 30 sec then retries x 2 then fails.
 # If the pf-badhost list is < 24 hours old, nothing is done
 # (and the regular pf-badhost update LaunchAgent will run as scheduled).
@@ -353,6 +356,11 @@ exit 1
 		<true/>
     </dict>
     </plist>
+
+    Now load the LaunchDaemon:
+
+    # sudo launchctl bootstrap system refresh_pf-badhost_on_boot 
+
 
     Or, if you want to run the script at a time of your choice, you can ignore the plist, change the script to
     your specifications, copy to your home directory, and just run prn:
