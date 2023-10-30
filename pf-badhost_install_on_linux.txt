@@ -103,14 +103,13 @@ Based on:
      Most options can also be configured via command line flags. See man page for more details.
      ---
      See the "Post Install Notes" section below for more info on installing optional utilities.
- 
-
-  e) Comment out lines in pf-badhost calling pfctl (lines 336-340, 639-646, and 997-1000).
-     This is really a hack job, but works. A more proper revision is upcoming.
 
 
-8) Run pfbadhost as user "_pfbadhost" using the "-O custom", "-Z sudo", and "-F curl" arguments:
-	$ sudo -u _pfbadhost pf-badhost -O custom -Z sudo -F curl
+8) Run pfbadhost as user "_pfbadhost" using the "-O custom", "-Z sudo", "-F curl" and -x arguments:
+	$ sudo -u _pfbadhost pf-badhost -O custom -Z sudo -F curl -x > /etc/pf-badhost.txt
+
+   The -x argument if for machines which do not have pf installed; it blocks the calls to pfctl and directs the output to stdout
+   which we redirect to /etc/pfbadhost.txt.
 
    Now check /etc/pf-badhost.txt to see if it updated, and check /var/log/pf-badhost/pf-badhost.log.
 
@@ -118,8 +117,7 @@ Based on:
 9) Edit _pfbadhost crontab to run pf-badhost every night at some time after midnight:
 	# crontab -u _pfbadhost -e
 	...
-	@daily	sleep $(echo $((RANDOM\%7200+1))); /usr/local/bin/pf-badhost -O custom -Z sudo -F curl \
-           >> /var/log/pf-badhost/pf-update.log 2>&1
+	@daily	sleep $(echo $((RANDOM\%7200+1))); /usr/local/bin/pf-badhost -O custom -Z sudo -F curl -x > /etc/pf-badhost.txt
 	...
 
 10) If this is a computer which is turned off and on, there needs to be a process which runs at boot, checks the age of
@@ -164,7 +162,7 @@ Based on:
 	    if [[ $? -eq 0 ]]; then
 	        print "Internet connection active"
 	        print "Now running '/usr/local/bin/pf-badhost'"
-	        sudo -u _pfbadhost /usr/local/bin/pf-badhost -O custom -Z sudo -F curl > /dev/null 2>&1
+	        sudo -u _pfbadhost /usr/local/bin/pf-badhost -O custom -Z sudo -F curl -x > /etc/pf-badhost.txt
 	        if [[ $? -eq 0 ]]; then
 	            print "pfbadhost completed sucessfully\n"
 	            exit 0
@@ -223,7 +221,7 @@ Here's an abbreviated set up:
 	exec >> /var/log/pf-badhost/pf-update.log 2>&1
 
 	print "\n****"
-	print "Running 'update_badhosts_list_in_ufw' script"
+	print "Running 'update_badhosts_list_in_iptables' script"
 	print $(date)
 
 	# Check if set badhosts exists
@@ -259,8 +257,8 @@ Here's an abbreviated set up:
 	#iptables -I OUTPUT -m set --match-set badhosts src -j DROP 
 
    Check the ownership and permissions:
-        $ sudo chmod 755 /usr/local/bin/update_badhosts_list_in_ufw
-        $ sudo chown root:bin /usr/local/bin/update_badhosts_list_in_ufw
+        $ sudo chmod 755 /usr/local/bin/update_badhosts_list_in_iptables
+        $ sudo chown root:bin /usr/local/bin/update_badhosts_list_in_iptables
 
 
    Run this as a cron job after the daily pf-badhost job
@@ -268,7 +266,7 @@ Here's an abbreviated set up:
 	$ sudo -u root crontab -e
 
         ....
-	30 2 * * * /usr/bin/nice -n 5 /usr/bin/oksh -c "/usr/local/bin/update_badhosts_list_in_ufw \
+	30 2 * * * /usr/bin/nice -n 5 /usr/bin/oksh -c "/usr/local/bin/update_badhosts_list_in_iptables \
            >> /var/log/pf-badhost/pf-update.log 2>&1"
 	....
 
@@ -349,7 +347,7 @@ Here's an abbreviated set up:
 	$ sudo -u root crontab -e
 
         ....
-	@reboot sleep 300; /usr/bin/nice -n 5 /usr/bin/oksh -c "/usr/local/bin/update_badhosts_list_in_ufw \
+	@reboot sleep 300; /usr/bin/nice -n 5 /usr/bin/oksh -c "/usr/local/bin/update_badhosts_list_in_iptables \
            >> /var/log/pf-badhost/pf-update.log 2>&1"
 	....
 
