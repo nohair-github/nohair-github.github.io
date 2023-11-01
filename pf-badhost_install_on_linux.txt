@@ -111,16 +111,70 @@ Based on:
    The -x argument if for machines which do not have pf installed; it blocks the calls to pfctl and directs the output to stdout
    which we redirect to /etc/pfbadhost.txt.
 
-   Now check /etc/pf-badhost.txt to see if it updated, and check /var/log/pf-badhost/pf-badhost.log.
+   Now check /etc/pf-badhost.txt to see if it updated.
 
 
-9) Edit _pfbadhost crontab to run pf-badhost every night at some time after midnight:
-	# crontab -u _pfbadhost -e
+9. Create a script to run pf-badhost nightly:
+
+   # sudo nano /usr/local/bin/refresh_pf-badhosts_;ist_nightly
+
+#! /usr/bin/oksh
+
+# refresh_pf-badhosts_list_nightly
+
+# Script (1) checks if there is an active internet connection, and if so,
+# (2) runs '/usr/local/bin/pf-badhost -O custom -Z sudo -F curl -x > /etc/pf-badhost.txt'.
+# But, if there is no connection, (3) the script sleeps for 30 sec then retries x 2 then fails.
+
+# redirect stdout/stderr to log file
+exec >> /var/log/pf-badhost/pf-update.log 2>&1
+
+print "\n****"
+print "Running 'refresh_pf-badhosts_list_nightly' script"
+print $(date)
+
+if [[ ! -e /etc/pf-badhost.txt ]]; then
+    print "/etc/pf-badhost.txt does not exist - exiting\n"
+    exit 1
+fi
+
+for n in {0..2}; do
+    nc -w5 -z www.binarydefense.com 443 1&>/dev/null
+    if [[ $? -eq 0 ]]; then
+        print "internet connection active"
+        print "now running /usr/local/bin/pf-badhost"
+        sudo -u _pfbadhost /usr/local/bin/pf-badhost -O custom -Z sudo -F curl -x > /etc/pf-badhost.txt
+        if [[ $? -eq 0 ]]; then
+            print "pfbadhost completed sucessfully\n"
+            exit 0
+        else
+            print "pf-badhost script did not sucessfully run - exiting\n"
+            exit 1
+        fi
+    else
+        print "server connection not available - sleeping for 30 seconds ..."
+        sleep 30
+    fi
+done
+print "server connection failed - exiting\n"
+exit 1
+
+# End
+
+   Change ownership to root:bin and permissions to 755.
+
+   # sudo chown root:bin /usr/local/bin/refresh_pf-badhosts_list_nightly
+   # sudo chmod 755 /usr/local/bin/refresh_pf-badhosts_list_nightly
+
+
+10) Create crontab to run pf-badhost every night at some time after midnight:
+	# sudo crontab -e
 	...
-	@daily	sleep $(echo $((RANDOM\%7200+1))); /usr/local/bin/pf-badhost -O custom -Z sudo -F curl -x > /etc/pf-badhost.txt
+	10  2  *  *  *	/usr/local/bin/refresh_pf-badhost_list_nightly >> /var/log/pf-badhost/pf_update.log 2>&1
 	...
 
-10) If this is a computer which is turned off and on, there needs to be a process which runs at boot, checks the age of
+
+11) If this is a computer which is turned off and on, there needs to be a process which runs at boot, checks the age of
     /etc/pf-badnost.txt and runs the /usr/local/bin/pf-badhost script if it is over 24 hours since update.
 
 	$ sudo nano /usr/local/bin/refresh_pf-badhosts_file_on_boot
@@ -183,9 +237,9 @@ Based on:
 
     Add to crontab:
 
-	# crontab -u _pfbadhost -e
+	# sudo crontab -e
 	...
-	@reboot	sleep 30; /bin/oksh /usr/local/bin/refresh_pf-badhosts_list_on_boot \
+	@reboot	sleep 30; /usr/local/bin/refresh_pf-badhosts_list_on_boot \
            >> /var/log/pf-badhost/pf-update.log 2>&1
 	...
 
