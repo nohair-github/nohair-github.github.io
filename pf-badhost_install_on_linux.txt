@@ -74,13 +74,13 @@ Based on:
    b) Install mawk and ripgrep for improved performance:
 	$ sudo apt-get install mawk ripgrep
 
-6) Edit sudoers file to give privileges to _pfbadhost
+#6) Edit sudoers file to give privileges to _pfbadhost (Not necessary with scripts below.)
 
-   $ sudo visudo
+   # $ sudo visudo
 
-   Insert:
+   #Insert:
    
-   _pfbadhost  ALL = (ALL) NOPASSWD: ALL
+   #_pfbadhost  ALL = (ALL) NOPASSWD: ALL
 
 
 6) Configure pf-badhost script:
@@ -117,6 +117,8 @@ Based on:
 9. Create a script to run pf-badhost nightly:
 
    # sudo nano /usr/local/bin/refresh_pf-badhosts_;ist_nightly
+
+#====== Begin script
 
 #! /usr/bin/oksh
 
@@ -161,6 +163,8 @@ exit 1
 
 # End
 
+#====== End script
+
    Change ownership to root:bin and permissions to 755.
 
    # sudo chown root:bin /usr/local/bin/refresh_pf-badhosts_list_nightly
@@ -178,6 +182,8 @@ exit 1
     /etc/pf-badnost.txt and runs the /usr/local/bin/pf-badhost script if it is over 24 hours since update.
 
 	$ sudo nano /usr/local/bin/refresh_pf-badhosts_file_on_boot
+
+#====== Begin script
 
 	#! /usr/bin/env oksh
 
@@ -234,6 +240,8 @@ exit 1
 	exit 1
 
 	# End
+
+#====== End script
 
     Add to crontab:
 
