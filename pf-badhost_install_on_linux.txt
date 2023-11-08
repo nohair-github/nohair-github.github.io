@@ -191,8 +191,6 @@ Based on:
 	# (2) checks if there is an active internet connection, and if so,
 	# (3) runs '/usr/local/bin/pf-badhost -O custom -Z sudo -F curl -x > /etc/pf-badhost.txt.
 	# But, if there is no connection, (4) the script sleeps for 30 sec then retries x 2 then fails.
-	# If the pf-badhost list is <24 hours old, nothing is done
-	# (and the regular pf-badhost update will run as scheduled).
 
 	# redirect stdout/stderr to log file
 	exec >> /var/log/pf-badhost/pf-update.log 2>&1
