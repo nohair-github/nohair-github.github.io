@@ -5,7 +5,7 @@
 
 ###################################################################
 # Modified from original and updated for MacOS 12.6 'Monterey'
-# and MacOS 13.5.2 Ventura by gsb
+# and MacOS 13.5.2 'Ventura' by gsb
 ###################################################################
 
 ###################################################################
@@ -182,59 +182,63 @@
 
    The wrapper script is:
 
-#! /bin/zsh
+	## BEGIN script ##
 
-# refresh_pf-badhosts_nightly
+	#! /bin/zsh
 
-# Script (1) checks if _pfbadhost user is present (and hasn't been deleted by macos update)
-# (2) checks if there is an active internet connection, and if so,
-# (3) runs '/usr/local/bin/pf-badhost -O macos' as _pfbadhost
-# But, if there is no connection, (4) the script sleeps for 30 sec then retries x 2 then fails.
+	# refresh_pf-badhosts_nightly
 
-# redirect stdout/stderr to log file
-exec >> /var/log/pf-badhost/pf-update.log 2>&1
+	# Script (1) checks if _pfbadhost user is present (and hasn't been deleted by macos update)
+	# (2) checks if there is an active internet connection, and if so,
+	# (3) runs '/usr/local/bin/pf-badhost -O macos' as _pfbadhost
+	# But, if there is no connection, (4) the script sleeps for 30 sec then retries x 2 then fails.
 
-print "\nRunning /usr/local/bin/refresh_pf-badhosts_nightly"
-print $(date)
+	# redirect stdout/stderr to log file
+	exec >> /var/log/pf-badhost/pf-update.log 2>&1
 
-# Check if user _pfbadhost has been deleted by update and re-create if necessary
-dscl . list /Users | grep -q '_pfbadhost'
-if [[ $? -ne 0 ]]; then
-    print "User _pfbadhost not present - recreating"
-    sysadminctl -addUser _pfbadhost -fullName _pfbadhost -UID 301 -GID 61 -roleAccount
-else
-    print "User _pfbadhost present"
-fi
+	print "\nRunning /usr/local/bin/refresh_pf-badhosts_nightly"
+	print $(date)
 
-# Check if /etc/pf-badhost.txt is present
-if [[ ! -e /etc/pf-badhost.txt ]]; then
-    print "/etc/pf-badhost.txt does not exist - exiting\n ****\n"
-    exit 1
-fi
+	# Check if user _pfbadhost has been deleted by update and re-create if necessary
+	dscl . list /Users | grep -q '_pfbadhost'
+	if [[ $? -ne 0 ]]; then
+	    print "User _pfbadhost not present - recreating"
+	    sysadminctl -addUser _pfbadhost -fullName _pfbadhost -UID 301 -GID 61 -roleAccount
+	else
+	    print "User _pfbadhost present"
+	fi
 
-print "\nchecking for internet connection"
-for n in {0..2}; do
-    nc -w5 -z www.binarydefense.com 443 1&>/dev/null
-    if [[ $? -eq 0 ]]; then
-        print "internet connection active"
-        print "now running '/usr/local/bin/pf-badhost -O macos' as _pfbadhost"
-        sudo -u _pfbadhost /usr/local/bin/pf-badhost -O macos
-        if [[ $? -eq 0 ]]; then
-            print "pfbadhost completed sucessfully\n ****\n"
-            exit 0
-        else
-            print "pf-badhost script did not sucessfully run - exiting\n ****\n"
-            exit 1
-        fi
-    else
-        print "server connection not available - sleeping for 30 seconds ..."
-        sleep 30
-    fi
-done
-print "server connection failed - exiting\n ****\n"
-exit 1
+	# Check if /etc/pf-badhost.txt is present
+	if [[ ! -e /etc/pf-badhost.txt ]]; then
+	    print "/etc/pf-badhost.txt does not exist - exiting\n****\n"
+	    exit 1
+	fi
 
-# End
+	print "\nchecking for internet connection"
+	for n in {0..2}; do
+	    nc -w5 -z www.binarydefense.com 443 1&>/dev/null
+	    if [[ $? -eq 0 ]]; then
+	        print "internet connection active"
+	        print "now running '/usr/local/bin/pf-badhost -O macos' as _pfbadhost"
+	        sudo -u _pfbadhost /usr/local/bin/pf-badhost -O macos
+	        if [[ $? -eq 0 ]]; then
+	            print "pfbadhost completed sucessfully\n****\n"
+	            exit 0
+	        else
+	            print "pf-badhost script did not sucessfully run - exiting\n****\n"
+	            exit 1
+	        fi
+	    else
+	        print "server connection not available - sleeping for 30 seconds ..."
+	        sleep 30
+	    fi
+	done
+	print "server connection failed - exiting\n****\n"
+	exit 1
+
+	# End
+
+## END script ##
 
     Change ownership and permissions on script:
     # sudo chown root:bin /usr/local/bin/refresh_pf-badhosts_nightly
@@ -257,70 +261,75 @@ exit 1
     we can create another script which runs at boot. This script checks if /etc/pf-badhost.txt has
     been recently updated (that is, if it is less than 24 hours old) and updates it as necessary.
 
-#! /bin/zsh
 
-# refresh_pf-badhosts_on_boot
+	## BEGIN script ##
 
-# Script (1) checks date of last update of /etc/pf-badhost.txt and, if more than 24 hours,
-# (2) checks if user _pfbadhost is present and, if not, re-creates it,
-# (3) checks if there is an active internet connection, and if so,
-# (3) runs '/usr/local/bin/pf-badhost -O macos' as _pfbadhost.
-# But, if there is no connection, (4) the script sleeps for 30 sec then retries x 2 then fails.
-# If the pf-badhost list is < 24 hours old, nothing is done
-# (and the regular pf-badhost update LaunchAgent will run as scheduled).
+	#! /bin/zsh
 
-# redirect stdout/stderr to log file
-exec >> /var/log/pf-badhost/pf-update.log 2>&1
+	# refresh_pf-badhosts_on_boot
 
-print "\nRunning /usr/local/bin/refresh_pf-badhosts_on_boot"
-print $(date)
+	# Script (1) checks date of last update of /etc/pf-badhost.txt and, if more than 24 hours,
+	# (2) checks if user _pfbadhost is present and, if not, re-creates it,
+	# (3) checks if there is an active internet connection, and if so,
+	# (3) runs '/usr/local/bin/pf-badhost -O macos' as _pfbadhost.
+	# But, if there is no connection, (4) the script sleeps for 30 sec then retries x 2 then fails.
+	# If the pf-badhost list is < 24 hours old, nothing is done
+	# (and the regular pf-badhost update LaunchAgent will run as scheduled).
 
-# Check if _pfbadhost has been deleted by update and re-create if necessary
-dscl . list /Users | grep -q '_pfbadhost'
-if [[ $? -ne 0 ]]; then
-    print "User _pfbadhost not present - recreating"
-    sysadminctl -addUser _pfbadhost -fullName _pfbadhost -UID 301 -GID 61 -roleAccount
-else
-    print "User _pfbadhost present"
-fi
+	# redirect stdout/stderr to log file
+	exec >> /var/log/pf-badhost/pf-update.log 2>&1
 
-if [[ ! -e /etc/pf-badhost.txt ]]; then
-    print "/etc/pf-badhost.txt does not exist - exiting\n ****\n"
-    exit 1
-fi
+	print "\nRunning /usr/local/bin/refresh_pf-badhosts_on_boot"
+	print $(date)
 
-file_mtime=$(stat -f %m /etc/pf-badhost.txt)
-current_time=$(date +%s)
-file_age=$(($current_time - $file_mtime))
+	# Check if _pfbadhost has been deleted by update and re-create if necessary
+	dscl . list /Users | grep -q '_pfbadhost'
+	if [[ $? -ne 0 ]]; then
+	    print "User _pfbadhost not present - recreating"
+	    sysadminctl -addUser _pfbadhost -fullName _pfbadhost -UID 301 -GID 61 -roleAccount
+	else
+	    print "User _pfbadhost present"
+	fi
 
-if [[ $file_age -lt 86400 ]]; then
-    print "/etc/pf-badhost.txt is less than 24 hours old - exiting\n ****\n"
-    exit 0
-fi
+	if [[ ! -e /etc/pf-badhost.txt ]]; then
+	    print "/etc/pf-badhost.txt does not exist - exiting\n ****\n"
+	    exit 1
+	fi
 
-print "\n/etc/pf-badhost.txt is more than 24 hours old - checking for internet connection"
-for n in {0..2}; do
-    nc -w5 -z www.binarydefense.com 443 1&>/dev/null
-    if [[ $? -eq 0 ]]; then
-        print "internet connection active"
-        print "now running '/usr/local/bin/pf-badhost -O macos'"
-        sudo -u _pfbadhost /usr/local/bin/pf-badhost -O macos
-        if [[ $? -eq 0 ]]; then
-            print "pfbadhost completed sucessfully\n ****\n"
-            exit 0
-        else
-            print "pf-badhost script did not sucessfully run - exiting\n ****\n"
-            exit 1
-        fi
-    else
-        print "server connection not available - sleeping for 30 seconds ..."
-        sleep 30
-    fi
-done
-print "server connection failed - exiting\n ****\n"
-exit 1
+	file_mtime=$(stat -f %m /etc/pf-badhost.txt)
+	current_time=$(date +%s)
+	file_age=$(($current_time - $file_mtime))
 
-# End
+	if [[ $file_age -lt 86400 ]]; then
+	    print "/etc/pf-badhost.txt is less than 24 hours old - exiting\n ****\n"
+	    exit 0
+	fi
+
+	print "\n/etc/pf-badhost.txt is more than 24 hours old - checking for internet connection"
+	for n in {0..2}; do
+	    nc -w5 -z www.binarydefense.com 443 1&>/dev/null
+	    if [[ $? -eq 0 ]]; then
+	        print "internet connection active"
+	        print "now running '/usr/local/bin/pf-badhost -O macos'"
+	        sudo -u _pfbadhost /usr/local/bin/pf-badhost -O macos
+	        if [[ $? -eq 0 ]]; then
+	            print "pfbadhost completed sucessfully\n ****\n"
+	            exit 0
+	        else
+	            print "pf-badhost script did not sucessfully run - exiting\n ****\n"
+	            exit 1
+	        fi
+	    else
+	        print "server connection not available - sleeping for 30 seconds ..."
+	        sleep 30
+	    fi
+	done
+	print "server connection failed - exiting\n ****\n"
+	exit 1
+
+	# End
+
+	## END script ##
 
     Change ownership and permissions on script:
     # sudo chown root:bin /usr/local/bin/refresh_pf-badhosts_on_boot
@@ -360,7 +369,6 @@ exit 1
     Now load the LaunchDaemon:
 
     # sudo launchctl bootstrap system refresh_pf-badhost_on_boot 
-
 
     Or, if you want to run the script at a time of your choice, you can ignore the plist, change the script to
     your specifications, copy to your home directory, and just run prn:
