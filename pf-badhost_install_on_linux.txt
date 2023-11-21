@@ -277,6 +277,8 @@ Here's an abbreviated set up:
 
 	#!/usr/bin/env oksh
 
+	# update_badhosts_list_in_iptables
+
 	# redirect stdout/stderr to log file
 	exec >> /var/log/pf-badhost/pf-update.log 2>&1
 
@@ -309,7 +311,7 @@ Here's an abbreviated set up:
 	grep -v -e '^#' -e '^$' -e '^\!' /etc/pf-badhost.txt | xargs -n1 ipset add badhosts
 
 	# Backup new badhost list
-	ipset save -file /etc/iptables/ipset
+	ipset save -file /etc/iptables/badhosts
 
 	# Load badhosts list into iptables INPUT, FORWARD, or OUTPUT chains as desired
 	iptables -I INPUT -m set --match-set badhosts src -j DROP
@@ -373,15 +375,15 @@ Here's an abbreviated set up:
 	Before=netfilter-persistent.service
 	Before=ufw.service
 
-	ConditionFileNotEmpty=/etc/iptables/ipset
+	ConditionFileNotEmpty=/etc/iptables/badhosts
 
 	[Service]
 	Type=oneshot
 	RemainAfterExit=yes
-	ExecStart=/sbin/ipset restore -exist -file /etc/iptables/ipset
+	ExecStart=/sbin/ipset restore -exist -file /etc/iptables/badhosts
 
 	# Uncomment to save changed sets on reboot
-	ExecStop=/sbin/ipset save -file /etc/iptables/ipset
+	ExecStop=/sbin/ipset save -file /etc/iptables/badhosts
 
 	ExecStop=/sbin/ipset flush
 	ExecStopPost=/sbin/ipset destroy
