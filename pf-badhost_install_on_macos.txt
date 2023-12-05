@@ -5,7 +5,7 @@
 
 ###################################################################
 # Modified from original and updated for MacOS 12.6 'Monterey'
-# and MacOS 13.5.2 'Ventura' by gsb
+# and MacOS 13.5 'Ventura' by gsb
 ###################################################################
 
 ###################################################################
@@ -70,13 +70,15 @@
 
    'nologin' users seen in Unix or Linux are not used. In modern MacOS versions, these are termed 'roleAccount'.
    These accounts should have UIDs between 200 and 400. As far as the group ID,
-   you can use staff (20) or localaccounts (61). The commad to create the _pfbadhost user is:
+   you can use staff (20) or localaccounts (61). The command to create the _pfbadhost user is:
 
    sudo sysadminctl -addUser _pfbadhost -fullName _pfbadhost -UID 301 -GID 61 -roleAccount
 
    I have also found that the _pfbadhost user created in the fashion was also deleted during the update from
    MacOS 12.7 to 12.7.1. I have searched for the reason for this and documentation of why certain users were
-   retained and others deleted to no avail. Perhaps members of a different group are not?
+   retained and others deleted to no avail. Perhaps members of a different group are not? So, check if user
+   _pfbadhost is present after an update. The scripts below perform this check and recreate the user if it is
+   absent.
 
 
 2) Download pf-badhost script:
@@ -152,18 +154,16 @@
 
     b. create a LaunchAgent which runs a wrapper script which triggers pf-badhost every night
 
-        # nano /Library/LaunchDaemons/redresh_pf-badhosts_nightly.plist
+        # nano /Library/LaunchDaemons/nightly.pfbadhost.update.plist
 
 	<?xml version="1.0" encoding="UTF-8"?>
 	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 	<plist version="1.0">
 	<dict>
-	    <key>InitGroups</key>
-                <true/>
             <key>Label</key>
-	        <string>refresh_pf-badhosts_nightly</string>
+	        <string>nightly.pfbadhosts.update</string>
 	    <key>Program</key>
-	        <string>/usr/local/bin/refresh_pf_badhosts_nightly</string>
+	        <string>/usr/local/bin/refresh_pf-badhosts_nightly</string>
 	    <key>StandardErrorPath</key>
 	        <string>/var/log/pf-badhost/pf-update.log</string>
 	    <key>StandardOutPath</key>
@@ -178,7 +178,7 @@
 		</dict>
 	        </array>
 	</dict>
-    </plist>
+        </plist>
 
    The wrapper script is:
 
@@ -196,7 +196,7 @@
 	# redirect stdout/stderr to log file
 	exec >> /var/log/pf-badhost/pf-update.log 2>&1
 
-	print "\nRunning /usr/local/bin/refresh_pf-badhosts_nightly"
+	print "****\nRunning /usr/local/bin/refresh_pf-badhosts_nightly"
 	print $(date)
 
 	# Check if user _pfbadhost has been deleted by update and re-create if necessary
@@ -279,7 +279,7 @@
 	# redirect stdout/stderr to log file
 	exec >> /var/log/pf-badhost/pf-update.log 2>&1
 
-	print "\nRunning /usr/local/bin/refresh_pf-badhosts_on_boot"
+	print "****\nRunning /usr/local/bin/refresh_pf-badhosts_on_boot"
 	print $(date)
 
 	# Check if _pfbadhost has been deleted by update and re-create if necessary
@@ -347,7 +347,7 @@
     Or,
     b. create a LaunchAgent which runs the script at boot.
 
-    # sudo nano /Library/LaunchAgent/refresh_pf-badhost_nightly.plist
+    # sudo nano /Library/LaunchAgent/refresh_pf-badhost_on_boot.plist
 
     <?xml version="1.0" encoding="UTF-8"?>
     <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
