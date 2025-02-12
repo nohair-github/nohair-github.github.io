@@ -1,0 +1,110 @@
+Blocking DOH on OpenBSD
+
+A. Why block DOH?
+On my network, I run internal caching DNS servers (unbound) configured with a comprehensive ad-blocking list (unbound-adblock). The base list of ip addresses for ad servers is augmented with a local list of nefarious hosts identified by relayd log parsing software and others identified by excessive or failed login attempts. These can be augmented by publically available lists of ip addresses of known hosts for malware, spyware, C2 (command and control), etc.
+
+For additional privacy, I have introduced blocking of all DNS queries from local hosts (port 53 tcp and udp as well as port 853 tcp) which are redirected to internal DNS servers which communicate with the forwarders over DOT on port 853.
+
+The increasing adoption of DNS over HTTP(S) has upended this regime. Further, besides ads and other annoyances now popping up in the network, increasing examples of malware which use DOH to communicate with C2 servers have been seen.
+
+So, let's agree that blocking this channel may be worthwhile. Unfortunately, it's not so easy.
+
+B. Methods for blocking DOH and their drawbacks.
+
+1. Port-based blocking: DOH uses port 443 which means blocking this port breaks the web. There are malware examples that use other ports and some of these may be blocked without interfering with usual functions.
+
+2. IP-based blocking: The simple IP-based blocking of hosts by the firewall (pf) is not useful in many cases as the DOH server is hosted at an IP address which is also used for HTTPS, etc. using SNI (server Name Indication). Simply blocking these IPs will break many services (for example Apple's suite). Some servers can be blocked without compromising internet function but this has to be selective and the IP's on the list have to expire as these IP addresses change or are no longer spoofed.
+
+
+3. Geo-blocking: May be of some utility but many professional blackhats use VPNs and multiple proxy servers to disguise their identity and location which obviate this strategy. Yet, I have found that geo-blocking ru and cn addresses did result in a noticable drop in nefarious packets to the network.
+
+4. DNS-based blocking: The DOH client may use DNS to find the IP address of the intended server. Some are hard-coded but those that use DNS can be blocked by using publically available lists.
+
+Ad blocking by DNS is very effective and, as some of these ad servers also serve malware and may host other functions such as DOH servers, this is a good baseline strategy. I use unbound-adblock, a script which generates a rpz formatted list from text files, host files, etc.
+
+5. SNI-based blocking: This requires decrypting the packets and doing so-called DPI (deep packet inspection) to indentify the HTTPS header "application/dns-message" but this is not always used. Sometimes the actual data in the packet needs to be parsed to catch all DOH.
+
+The result is that there must be a multi-facted approach to blocking but powerful DPI firewalls are quite expensive for the home user or small business.
+
+C. Configuring DNS-based ad blocking. Here, I refer you to unbound-adblock (https://www.geoghegan.ca/unbound-adblock.html). It hasn't been updated since 2021 but still functions perfectly. The script generates rpz formatted lists from most lists available, whether /etc/hosts lists or text lists of various formats. It's a (ksh) shell script and can be easily configured to your use.
+
+D. Configuring DNS-based blocking of DOH servers.
+
+Here I am using unbound on a DNS server running OpenBSD.
+
+Initial set-up:
+
+1. Get list of doh servers
+
+wget -O /home/user/doh.rpz https://raw.githubusercontent.com/jpgpi250/piholemanual/master/DOH.rpz 
+doas chown _unbound:_unbound doh.rpz
+doas mv doh.rpz /var/unbound/db/
+
+2. Add to unbound.conf
+
+rpz:
+       name: doh-block
+       zonefile: /var/unbound/db/doh.rpz
+       url: https://raw.githubusercontent.com/jpgpi250/piholemanual/master/DOH.rpz
+       rpz-action-override: nxdomain
+       rpz-log: yes
+       rpz-log-name: doh-block
+
+Since this rpz list includes an SOA, serial, and TTL, it will automatically be refreshed from the url on expiration.
+
+3. Check configuration
+doas unbound-checkconf
+
+4. Reload unbound.conf
+doas unbound-control reload
+
+5. Check if rpz is loaded
+unbound-control list_auth_zones
+
+6. Determine if doh.rpz is filtering (after unbound has run a while):
+less /var/log/unbound.log | grep 'doh-block'
+
+7.Manage rpz zones once loaded:
+doas unbound-control rpz_disable doh-block
+doas unbound-control rpz_enable doh-block
+
+8. If you are part of the Apple ecosystem and use Private Relay or other services, you may need a whitelist
+
+a. Place the stanza first in the list of rpz's in unbound.conf - it must come brfore any block lists.
+
+rpz:
+    name: whitelist
+    zonefile: /var/unbound/db/whitelist.rpz
+    rpz-action-override: passthru
+    rpz-log: yes
+    rpz-lof-name: rpz-whitelist
+
+b. create whitelist.rpz:
+doas touch /var/unbound/db/whitelist.rpz
+doas chown _unbound:_unbound /var/unbound/db/whitelist.rpz
+
+c. enter data in whitelist.rpz
+doas nano /var/unbound/db/whitelist.rpz
+
+Then enter:
+
+;; Date Created: Wed Feb 12 15:55:40 EST 2025
+;;
+
+;; Whitelist:
+
+mask.icloud.com CNAME rpz-passthru.
+mask-h2.icloud.com CNAME rpz-passthru.
+doh.dns.apple.com CNAME rpz-passthru.
+doh.dns.apple.com.v.aaplimg.com CNAME rpz-passthru.
+mask-api.icloud.com CNAME rpz-passthru.
+mask-api.fe.apple-dns.net CNAME rpz-passthru.
+mask.apple-dns.net CNAME rpz-passthru.
+
+(No serial or TTL included so this list will persist.)
+
+d. check configuration
+doas unbound-checkconf
+
+e. Reload unbound.conf
+doas unbound-control reload
