@@ -1,6 +1,7 @@
 Blocking DOH on OpenBSD
 
 A. Why block DOH?
+
 On my network, I run internal caching DNS servers (unbound) configured with a comprehensive ad-blocking list (unbound-adblock). The base list of ip addresses for ad servers is augmented with a local list of nefarious hosts identified by relayd log parsing software and others identified by excessive or failed login attempts. These can be augmented by publically available lists of ip addresses of known hosts for malware, spyware, C2 (command and control), etc.
 
 For additional privacy, I have introduced blocking of all DNS queries from local hosts (port 53 tcp and udp as well as port 853 tcp) which are redirected to internal DNS servers which communicate with the forwarders over DOT on port 853.
@@ -25,7 +26,9 @@ Ad blocking by DNS is very effective and, as some of these ad servers also serve
 
 The result is that there must be a multi-facted approach to blocking but powerful DPI firewalls are quite expensive for the home user or small business.
 
-C. Configuring DNS-based ad blocking. Here, I refer you to unbound-adblock (https://www.geoghegan.ca/unbound-adblock.html). It hasn't been updated since 2021 but still functions perfectly. The script generates rpz formatted lists from most lists available, whether /etc/hosts lists or text lists of various formats. It's a (ksh) shell script and can be easily configured to your use.
+C. Configuring DNS-based ad blocking.
+
+Here, I refer you to unbound-adblock (https://www.geoghegan.ca/unbound-adblock.html). It hasn't been updated since 2021 but still functions perfectly. The script generates rpz formatted lists from most lists available, whether /etc/hosts lists or text lists of various formats. It's a (ksh) shell script and can be easily configured to your use.
 
 D. Configuring DNS-based blocking of DOH servers.
 
