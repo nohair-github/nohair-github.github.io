@@ -5,16 +5,15 @@ On my network, I run internal caching DNS servers (unbound) configured with a co
 
 For additional privacy, I have introduced blocking of all DNS queries from local hosts (port 53 tcp and udp as well as port 853 tcp) which are redirected to internal DNS servers which communicate with the forwarders over DOT on port 853.
 
-The increasing adoption of DNS over HTTP(S) has upended this regime. Further, besides ads and other annoyances now popping up in the network, increasing examples of malware which use DOH to communicate with C2 servers have been seen.
+The increasing adoption of DNS over HTTP(S) has upended this regime. Further, besides ads and other annoyances now popping up in the network, increasing examples of malware which use DOH to communicate with C2 servers have been reported.
 
 So, let's agree that blocking this channel may be worthwhile. Unfortunately, it's not so easy.
 
 B. Methods for blocking DOH and their drawbacks.
 
-1. Port-based blocking: DOH uses port 443 which means blocking this port breaks the web. There are malware examples that use other ports and some of these may be blocked without interfering with usual functions.
+1. Port-based blocking: DOH uses port 443 which means blocking this port breaks the web. There are malware examples that use other ports and some of these may be blocked without interfering with usual functions but for plain-vanilla DOH it's a problem. Some malware has been found to use legitimate DOH servers like 1.1.1.1.
 
 2. IP-based blocking: The simple IP-based blocking of hosts by the firewall (pf) is not useful in many cases as the DOH server is hosted at an IP address which is also used for HTTPS, etc. using SNI (server Name Indication). Simply blocking these IPs will break many services (for example Apple's suite). Some servers can be blocked without compromising internet function but this has to be selective and the IP's on the list have to expire as these IP addresses change or are no longer spoofed.
-
 
 3. Geo-blocking: May be of some utility but many professional blackhats use VPNs and multiple proxy servers to disguise their identity and location which obviate this strategy. Yet, I have found that geo-blocking ru and cn addresses did result in a noticable drop in nefarious packets to the network.
 
@@ -37,14 +36,14 @@ Initial set-up:
 1. Get list of doh servers
 
 wget -O /home/user/doh.rpz https://raw.githubusercontent.com/jpgpi250/piholemanual/master/DOH.rpz 
-doas chown _unbound:_unbound doh.rpz
-doas mv doh.rpz /var/unbound/db/
+doas chown _unbound:_unbound DOH.rpz
+doas mv DOH.rpz /var/unbound/db/
 
 2. Add to unbound.conf
 
 rpz:
        name: doh-block
-       zonefile: /var/unbound/db/doh.rpz
+       zonefile: /var/unbound/db/DOH.rpz
        url: https://raw.githubusercontent.com/jpgpi250/piholemanual/master/DOH.rpz
        rpz-action-override: nxdomain
        rpz-log: yes
@@ -61,7 +60,7 @@ doas unbound-control reload
 5. Check if rpz is loaded
 unbound-control list_auth_zones
 
-6. Determine if doh.rpz is filtering (after unbound has run a while):
+6. Determine if DOH.rpz is filtering (after unbound has run a while):
 less /var/log/unbound.log | grep 'doh-block'
 
 7.Manage rpz zones once loaded:
@@ -86,7 +85,7 @@ doas chown _unbound:_unbound /var/unbound/db/whitelist.rpz
 c. enter data in whitelist.rpz
 doas nano /var/unbound/db/whitelist.rpz
 
-Then enter:
+Then enter those apple DOH servers you see blocked in your unbound logs:
 
 ;; Date Created: Wed Feb 12 15:55:40 EST 2025
 ;;
@@ -100,11 +99,18 @@ doh.dns.apple.com.v.aaplimg.com CNAME rpz-passthru.
 mask-api.icloud.com CNAME rpz-passthru.
 mask-api.fe.apple-dns.net CNAME rpz-passthru.
 mask.apple-dns.net CNAME rpz-passthru.
+mask-api.fe2.apple-dns.net CNAME rpz-passthru.
+apple-relay.fastly-edge.com CNAME rpz-passthru.
+apple-relay.cloudflare.com CNAME rpz.passthru.
 
-(No serial or TTL included so this list will persist.)
+
+No serial or TTL included so this list will persist.
+
+Not all of these are necessary. Check your logs to which are blocked and add those. I don't use private relay, Hide My Ip, or others so the first 4 are the ones I see from my iProducts.
 
 d. check configuration
 doas unbound-checkconf
 
 e. Reload unbound.conf
 doas unbound-control reload
+
