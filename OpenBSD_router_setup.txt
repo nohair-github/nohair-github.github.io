@@ -4,7 +4,7 @@ Basic network diagram:
 
 internet <-> [Router/firewall] <-> switch __ wifi access point
                                         |___ server(s)
-										|___ wired hosts(s)
+					|___ wired hosts(s)
 
 1. Install OpenBSD with GPT disks and UEFI boot
 	a. Download install77.img and copy to USB drive using dd: dd if=~/Downloads/install77.img of=/dev/sd2 BS=1M
@@ -72,7 +72,7 @@ internet <-> [Router/firewall] <-> switch __ wifi access point
 	b. Optional: Then add to ssh-agent and use that for key management
 		Reference: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent
 
-	c. Copy public key to .ssh/authorized_keys on Vault (assuming an ip address of 10.1.1.1)
+	c. Or (manual method):Copy public key to .ssh/authorized_keys on Vault (assuming an ip address of 10.1.1.1)
 	    scp /home/second_user/.ssh/id_ed25519.pub second_user@10.1.1.1:/home/second_user/.ssh/
 		Then log into the vault and
 		cat .ssh/id_ed25519.pub >> .ssh/authorized_keys
@@ -251,12 +251,12 @@ internet <-> [Router/firewall] <-> switch __ wifi access point
 		        #local-data: "Time\ Capsule.local. IN A 10.1.1.5"
 
 		        # example.network
-		        local-zone: "example.network." transparent
-		        local-data: "vault.example.network. IN A 10.1.1.1"
-		        local-data: "dns1.example.network. IN A 10.1.1.2"
+		        local-zone: "lan.internal." transparent
+		        local-data: "vault.lan.internal. IN A 10.1.1.1"
+		        local-data: "dns1.lan.internal. IN A 10.1.1.2"
 		        
-		        local-data-ptr: "10.1.1.1 vault.baskin.network"
-		        local-data-ptr: "10.1.1.2 dns1.baskin.network"
+		        local-data-ptr: "10.1.1.1 vault.lan.internal"
+		        local-data-ptr: "10.1.1.2 dns1.lan.internal"
 
 		        # Use TCP for "forward-zone" requests. Useful if you are making
 		        # DNS requests over an SSH port forwarding.
@@ -630,12 +630,12 @@ internet <-> [Router/firewall] <-> switch __ wifi access point
 
 
 Note A: Considerations for OpenBSD partition sizes:
-	It's fine to use the suggested partition/disklabels as a starting point, but
-	1. If the systemt will be used for more that 6 months and be upgraded to new releases as they appear, you need at least 1.1G free in /usr. Comsider bumping /usr up several GB.
-	2. If you plan to install significant amounts of software outside of the base system, consider a separate /usr/local.
-	3. If you don't plan to build custom kernels or from the ports tree, /usr/src and /usr/obj can be small or even eliminated and this space re-allocated to /usr
-	4. Consider the V1410 which has 32GB on an eMMC chip. This could be used as /altroot. If so, the your base system (/, /etc/, /usr ,/tmp, /var, /usr/X11R611111111 and so on) would need to be limited to 32GB. That's still plenty. /home can be on a separate partition.
-	5. You can leave free space at the end of the disklabels which can be later used to add new mount points (like /usr/local, /var/log, etc) or to expand /home.
+It's fine to use the suggested partition/disklabels as a starting point, but
+1. If the systemt will be used for more that 6 months and be upgraded to new releases as they appear, you need at least 1.1G free in /usr. Comsider bumping /usr up several GB.
+2. If you plan to install significant amounts of software outside of the base system, consider a separate /usr/local.
+3. If you don't plan to build custom kernels or from the ports tree, /usr/src and /usr/obj can be small or even eliminated and this space re-allocated to /usr
+4. Consider the V1410 which has 32GB on an eMMC chip. This could be used as /altroot only if you create a disklabel slice for OpenBSD of less than 32GB - which is plenty. The rest of sd0 cand be other partitions like /opt. /home can be on a separate partition; there are pros and cons.
+5. You can leave free space at the end of the disklabels which can be later used to add new mount points (like /usr/local, /var/log, etc) or to expand /home.
 
 
 Note B: Setting up serial port/com:
@@ -653,7 +653,8 @@ Note B: Setting up serial port/com:
 		Login as 'root' with the root password
 		Command to disconnect:
 			'~.'
-			
+		Scgeen also works (see below).
+	
 	V1410 and related:
 		Edit /etc/ttys to include:
 			tty00 "/usr/libexec/getty std.115200" vt220 on secure

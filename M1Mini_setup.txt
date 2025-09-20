@@ -2,7 +2,7 @@ Set Up a Mac Mini as a Headless Server for Home Network
 
 My Apple TimeCapsule has been running flawlessly for 14 years, providing a backup server for our fleet of Macs long after the TC was discontinued. It still works well, albeit slowly due to the slow disk and network performance. But now Apple has decreed that AFP will be deprecated and no longer supported in future releases of MacOS. So, this is the main impetus of this exercise - to replace the TimeCapsule with a server which can host Time Machine-like functionality. I could have gone with one of several NAS offerings from Synology and others but I had a perfectly functional M1 Mac Mini in a drawer that I was gifted. You can't beat free.
 
-So, let's configure the M1 Mac Mini as a network server for Time Machine backups, file sharing, printer sharing, local cloud, and other tasks. We will run it headless connected to the primary network switch by a wired connection.
+So, let's configure the M1 Mac Mini as a network server for Time Machine backups, file sharing, printer sharing, local iCloud, and other tasks. We will run it headless connected to the primary network switch by a wired connection.
 
 1. Update MacOS
 
