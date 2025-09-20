@@ -1,0 +1,117 @@
+Set Up a Mac Mini as a Headless Server for Home Network
+
+My Apple TimeCapsule has been running flawlessly for 14 years, providing a backup server for our fleet of Macs long after the TC was discontinued. It still works well, albeit slowly due to the slow disk and network performance. But now Apple has decreed that AFP will be deprecated and no longer supported in future releases of MacOS. So, this is the main impetus of this exercise - to replace the TimeCapsule with a server which can host Time Machine-like functionality. I could have gone with one of several NAS offerings from Synology and others but I had a perfectly functional M1 Mac Mini in a drawer that I was gifted. You can't beat free.
+
+So, let's configure the M1 Mac Mini as a network server for Time Machine backups, file sharing, printer sharing, local cloud, and other tasks. We will run it headless connected to the primary network switch by a wired connection.
+
+1. Update MacOS
+
+2. Consider resetting to a clean install (recommended):
+	https://support.apple.com/en-us/102664
+
+3. Create users:
+	a. Admin user: the first user you created
+
+	b. Basic user (unprivileged but with sudo access): create an unprivileged second user for logins
+		Set up sudo access for basic user:
+			Log in as adminstrator and 
+			# visudo
+		Add line:
+			seconduser		ALL = (ALL) ALL
+
+	c. Sharing Users: Create another user to access the shared folders and volumes. You can use the MacOS Syetem Settings > Users and Groups to add a Sharing User but this does assign a shell, a home directory, and the user can actually log on although access to certain folders is limited. I think it's safer to create a user without the ability to login to the GUI or a shell. You can then edit the Apple Sharing User to change the shell to /usr/bin/false and change the home directory to /var/empty.
+
+	I prefer to do it manually in the BSD way.:
+
+		sudo dscl . -create /Users/tmuser
+		sudo dscl . -create /Users/tmuser RealName "TM_Server_User" (You should use another name)
+		sudo dscl . -create /Users/tmuser UserShell /usr/bin/false
+		sudo dscl . -create /Users/tmuser NFSHomeDirectory /var/empty
+
+		You can place this user in the staff group (GroupID 20). You could consider creating multiple sharing users as above to keep each remote user's TM backups separate. In this case, create groups 'sharinguser1' and so on and assign these.
+
+		sudo dscl . -create /Users/tmuser PrimaryGroupID 20
+		Or:
+		sudo dscl . -create /Groups/[groupname]
+		Find a unused group number:
+		dscl . -list /Groups PrimaryGroupID | awk '{print $2}' | sort -n
+		Assign this:
+		sudo dscl . -create /Groups/[groupname] PrimaryGroupID [newGID]
+		sudo dseditgroup -o edit -a tmuser -t user [groupname]
+		Repeat for each individual TM/Network user you wish to create
+
+		Now assign a ID number >500 not in use. First, see what numbers are asigned:
+		dscl . -list /Users UniqueID | awk '{print $2}' | sort -n
+		Then, assign that unused number:
+		sudo dscl . -create /Users/tmuser UniqueID 510 (or whatever)
+
+		Now, check that it was all correct:
+		dscl . -read /Users/tmuser
+
+		Now, go to System Settings > Users and Groups and see that your new users are listed. Set a strong password for each new user.
+
+4. Set up network:
+	a. Turn off WiFi
+	b. Set wired interface IP address to a static one
+	c. Unset 'Automatically join this networK' in System Settings > WiFi
+	d. Delete (Forget) all saved networks
+	e. Set require administrator password to turn wifi on or change networks
+	
+
+5. Set up remote access:
+	MacOS has 2 methods of remotes access: Screen Sharing and Remote Wanagement, both found in the Sharing pane of System Settings
+	Screen Sharing works but I've found that disconnections are mre frequent.
+	For that reason, enable Remote Management and then use a VNC client to connect. For an older Mac, RealVNC is good. For a more modern OS, Screens works well, but there are many options.
+	Confirm remote access is working.
+
+6. Set to restart on power loss
+
+7. Set to auto login to a specific user such as seconduser
+
+8. Set up not to go to a lock screen
+	System Settings >> Lock Screen >> Require Password after Screen saver begins or screen is turned off: set to 'Never'
+
+9. Fix headless video issues with dummy HDMI plug or software (BetterDisplay)
+
+10. Prevent the Mac from sleeping
+	caffeinate:
+	pmset:
+
+11. Now, power down and connect to router/switch with wired connection then power up.
+
+12. Attach a fast USB disk to a USB port (Thunderbolt/USB3.2 if available) and configure.
+	a. File Sharing:
+		You can create a single Volume on your backup disk for shared files and then create folders which may be shared to all users, a single user, groups, or subgroups. This quickly gets complex but for small home networks with limited users and roles, the native unix-y user/group permission system is pretty standard.
+		https://support.apple.com/en-euro/guide/mac-help/mh17131/15.0/mac/15.0
+
+	b. Time Machine Server https://support.apple.com/en-euro/guide/mac-help/mchl31533145
+		Create shares:
+			Format the USB disk as APFS
+			Create a new volume for each machine which will be using the new backup server.
+			If you're migrating backups from a TimeCapsule, copy the sparsebundle from the TimeCapsule disk to the new shared folder.
+		Set sharing permissions:
+			Set shares to be shared as SMB.
+		    Select the backup Volume.
+		    Under 'Advanced Settings', set the share to be used as a Time Machine backup 
+			Set 'Read and Write' permissions for appropriate TM_Server_User or other user you created above.
+			You can also give 'Read and Write' permissions to the server's Staff group as is done by default, but this is not necessary.
+			Set 'Everyone' to have 'No Access'
+		Connect execute first backup:
+			Usually, this should be done over a wired connection, assuming you are not trying to migrate old TM backups
+		Connect and use previous sparsebundle:
+		    If you're migrating from a TimeCapsule, copy the sparsebundle from the TimeCapsule disk to the empty new shared folder.
+		    Then, on the remote host, go the Time Machine in System Settings or System Preferences, delete the existing Time Machine backup disk (hosted on the Time Capsule), and select the new shared volume as the Time Machine backup disk, you will be asked if you want to use the existing sparsebundle.
+
+	c. Content caching:
+		Set up content caching server: https://support.apple.com/en-euro/guide/mac-help/mchl3b6c3720/15.0/mac/15.0
+		Set up caching server and clients: https://support.apple.com/en-euro/guide/mac-help/mchl9b56e1cf/15.0/mac/15.0
+
+	d. Printer Sharing (if you have a printer/scanner which is not wifi or ethernet enabled)
+
+	e. Others (Plex, Jellyfin, Emby, etc.):
+		For Jellyfin: Set up: https://github.com/Digital-Shane/jellyfin-on-macos?tab=readme-ov-file
+					  Comments: https://www.reddit.com/r/selfhosted/comments/1jlvg3p/the_ultimate_guide_for_hosting_jellyfin_on_macos/
+
+Other/General References:
+https://stealthpuppy.com/mac-mini-home-server/
+https://www.intego.com/mac-security-blog/how-to-set-up-your-own-mac-server-with-an-old-or-new-mac/
