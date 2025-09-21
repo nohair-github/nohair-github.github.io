@@ -19,9 +19,7 @@ So, let's configure the M1 Mac Mini as a network server for Time Machine backups
 		Add line:
 			seconduser		ALL = (ALL) ALL
 
-	c. Sharing Users: Create another user to access the shared folders and volumes. You can use the MacOS Syetem Settings > Users and Groups to add a Sharing User but this does assign a shell, a home directory, and the user can actually log on although access to certain folders is limited. I think it's safer to create a user without the ability to login to the GUI or a shell. You can then edit the Apple Sharing User to change the shell to /usr/bin/false and change the home directory to /var/empty.
-
-	I prefer to do it manually in the BSD way.:
+	c. Sharing Users: Create another user to access the shared folders and volumes. You can use the MacOS Syetem Settings > Users and Groups to add a Sharing User but this has been associated with problems with Windows computers being able to use shares (see https://apple.stackexchange.com/questions/469442/unable-to-select-sharing-only-user-when-setting-up-file-sharing). I prefer to do it manually in the BSD way which does work with Windows ime.
 
 		sudo dscl . -create /Users/tmuser
 		sudo dscl . -create /Users/tmuser RealName "TM_Server_User" (You should use another name)
@@ -64,20 +62,22 @@ So, let's configure the M1 Mac Mini as a network server for Time Machine backups
 	For that reason, enable Remote Management and then use a VNC client to connect. For an older Mac, RealVNC is good. For a more modern OS, Screens works well, but there are many options.
 	Confirm remote access is working.
 
-6. Set to restart on power loss
+6. Set to restart on power loss:
 
-7. Set to auto login to a specific user such as seconduser
+7. Set to auto login to a specific user such as seconduser.
 
-8. Set up not to go to a lock screen
+8. Set up not to go to a lock screen:
 	System Settings >> Lock Screen >> Require Password after Screen saver begins or screen is turned off: set to 'Never'
 
 9. Fix headless video issues with dummy HDMI plug or software (BetterDisplay)
 
-10. Prevent the Mac from sleeping
-	caffeinate:
-	pmset:
+10. Prevent the Mac from sleeping:
+	caffeinate: This disables sleep as log as a process ('assertion') is running. You can find the PID of the login window and prevent sleep as long as the user is logged in with:
+		caffeinate -w <PID>
+	pmset: IMO, a better approach
+		sudo pmset disablesleep 0
 
-11. Now, power down and connect to router/switch with wired connection then power up.
+11. Now, power down and connect to router/switch with wired connection then power up. After power up, log in with ssh or VNC and issue command 'sudo pmset disablesleep 0'
 
 12. Attach a fast USB disk to a USB port (Thunderbolt/USB3.2 if available) and configure.
 	a. File Sharing:
