@@ -1,0 +1,680 @@
+Set up an OpenBSD router/firewall from scratch on Protectli Vault (notes for FW4B and the later V1410)
+
+Basic network diagram:
+
+internet <-> [Router/firewall] <-> switch __ wifi access point
+                                        |___ server(s)
+										|___ wired hosts(s)
+
+1. Install OpenBSD with GPT disks and UEFI boot
+	a. Download install77.img and copy to USB drive using dd: dd if=~/Downloads/install77.img of=/dev/sd2 BS=1M
+	b. Boot Vault into installer on USB drive. For, a step-by-step walk-through, see https://www.openbsdhandbook.com/installation/. It's a bit dated but is still mostly correct.
+	c. Choose shell (S) from installer first. At this time the main HD will be sd0 and the USB sd1 (Vault FW4B and similar) or the main disk will be sd0, the eMMC sd1, and the USB sd2 (Vault V1410 and similar). You can check with 'dmesg' or 'sysctl hw.disknames'.
+	d. Create an GPT disk with a new (EFI) partition:
+		fdisk -i -g -b 960 sd0
+	e. Now enter "install" to start installer.
+	f. At select interface to configure, choose the first (either em0 or igc0) and select "autoconf'
+	g. Then select second interface (em1 or igc1) and configure as lan interface:
+		'inet 10.1.1.1 255.255.255.0 10.1.1.255'
+	h. When you get to the point where you are asked if you want to configure an addition user, do so. This will be your admin user after you disable root logins.
+	i. In the next step where you are asked to allow root login on ssh, answer 'yes'. This is insecure but we will change this later. For now, it is useful after reboot for initial configuration.
+	j. When you get to the point where the installer asks which disk to use, you can list the available disks.  Usually you will choose sd0 and then choose '(O)penBSD' partition. You can use the suggested disklabel or create a custom one (See Note A below) but don't touch slice 'i'.
+	k. When you get to the reboot question at the end, don't reboot. Select (S)hell again. Here, we install the boot loader on the EFI partition:
+		Check where and which partitions are mounted.
+			mount
+		(Usually sd0a will be on /mnt and sd0i will need to be mounted on /mnt2)
+		Run:
+			/mnt/sbin/newfs_msdos sd0i (to format partition i - the EFI partition)
+			mkdir /mnt2
+			mount /dev/sd0i /mnt2
+			mkdir -p /mnt2/efi/boot
+			cp /mnt/usr/mdec/BOOTX64.EFI /mnt2/efi/boot
+		Now reboot then ssh back into new OpenBSD install as root for further configuration.
+	
+	References:
+	https://www.openbsdhandbook.com/installation/
+	https://www.openbsd.org/faq/faq4.html
+	https://jasper.la/posts/openbsd-uefi-bootloader-howto/
+	https://kb.protectli.com/kb/how-to-install-openbsd-on-the-vault-2/
+
+2. *** Now log in as root and set up serial console access (see Note B at end of this document). Do not proceed until that is working. ***
+	
+3. Adjust user permissions: If you configured a second user during install, you need to configure that (non-root admin) user to have root privileges as needed. If not, time to create the second (admin) user. Then:
+
+	a. Add second user to wheel group
+		vi /etc/group
+		Change 'wheel:*:0:root' to 'wheel:*:0:root,second_user'
+
+	Or:
+		
+	b. Add second user to doas.conf:
+		# Allow wheel by default
+		permit keepenv :wheel as root
+		
+		# Allow root
+		permit nopass keepenv root as root
+		
+		# Allow second_user
+		permit persist keepenv second_user as root
+		
+	c. Now log out of your ssh session and re-login as second_user to check if you have access and that you can use doas to escalate privileges as needed.
+		ssh -l second_user
+	   Once logged in:
+	   	doas less /etc/pf.conf
+	
+4. SSHD: If you confirm you can log in as a non-root user 
+	
+	a. Create ssh key on your computer you use to log into the Vault:
+		ssh-keygen -t ed25519 -C "your_email@example.com" (preferred)
+		(Or, for older systems but less secure:
+		ssh-keygen -t rsa -b 4096 -C "your_email@example.com")
+		Set passphrase and save private key as .ssh/id_ed25519 and public key as .ssh/id_ed25519.pub
+		
+	b. Optional: Then add to ssh-agent and use that for key management
+		Reference: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent
+
+	c. Copy public key to .ssh/authorized_keys on Vault (assuming an ip address of 10.1.1.1)
+	    scp /home/second_user/.ssh/id_ed25519.pub second_user@10.1.1.1:/home/second_user/.ssh/
+		Then log into the vault and
+		cat .ssh/id_ed25519.pub >> .ssh/authorized_keys
+		(or use ssh-agent)
+		
+	d. Now test by logging out and logging in to see if you are prompted for the passphrase of your key.
+	
+	e. If you're sure it's working, insert the following lines to /etc/ssh/sshd_config below the default entries. This will lock the root out from ssh and lock you out as well if private key authentication is not working. In that case, I hope you got serial console access working; otherwise, time to re-install from sratch.
+		ListenAddress 10.1.1.1
+		PermitRootLogin no
+		PasswordAuthentication no
+		PubkeyAuthentication yes
+		
+	f. Restart sshd
+		doas rcctl restart sshd
+	
+	f. If you're locked out, well, see the end of this document for how to do serial console access.
+	
+5. If not already done, configure basic network WAN and LAN interfaces.
+	em0 or igc0:
+		'inet autoconf'
+	em1 or igc1:
+ 		'inet 10.1.1.1 255.255.255.0 10.1.1.255'	
+	
+6. dhcpleased.conf:
+	interface igc0 {
+        ignore dns
+        }		
+		
+7. sysctl.conf:
+	net.inet.ip.forwarding=1
+	
+8. Preliminary pf configuration
+	pf.conf:
+		wan = "igc0" # egress
+		lan  = "igc1"
+		set block-policy drop
+		set loginterface egress
+		set skip on lo0
+		block all
+		pass out on egress inet from $lan:network to !($lan:network) nat-to (egress:0)
+		pass in on $lan inet from $lan:network
+		pass out on $lan inet		
+
+9. DHCP
+	a. Example dhcpd.conf
+		# DHCP server options.
+		# See dhcpd.conf(5) and dhcpd(8) for more information.
+		#
+	
+		# Network:              10.1.1.0/255.255.255.0
+		# Domain name:          example.internal
+		# Name servers:         10.1.1.53 10.1.1.1
+		# Default router:       10.1.1.1
+		# DHCP address range:   10.1.1.100 - 10.1.1.199
+	
+		# Global parameters
+		option  domain-name "example.internal";
+	
+		subnet 10.1.1.0 netmask 255.255.255.0 {
+	        range 10.1.1.100 10.1.1.199;
+	        option broadcast-address 10.1.1.255;
+	        option routers 10.1.1.1;
+	        option  domain-name-servers 10.1.1.53, 10.1.1.1;
+	        option ntp-servers 10.1.1.1; 
+	        max-lease-time 86400;
+	        default-lease-time 43200;
+	
+	        host Roku4KStick {
+	                hardware ethernet 50:06:f5:4a:7c:1e;
+	                fixed-address 10.1.1.200;
+	                }
+	
+	        }
+
+	b. Create log files:
+		doas touch /var/log/dhcpd.log
+		doas chown root:wheel /var/log/dhcpd.log
+		doas chmod 640 /var/log/dhcpd.log
+
+	c. Add stanza to syslog.conf to redirect logging to dhcpd.log
+		# Divert dhcpd logs to /var/log/dhcpd.log
+		!!dhcpd
+		*.*                                                     /var/log/dhcpd.log
+		!*
+		#
+
+	d. Edit newsyslog.conf to set number of log files retained
+		/var/log/dhcpd.log                      640  4     250  *     Z
+
+
+10. DNS: Unbound
+	Unbound is configured as a caching and forwarding DNS server which is configured to communicate with 
+	the forwarders over DOT.
+
+	/var/unbound/etc/unbound.conf:
+
+		# $OpenBSD: unbound.conf,v 1.7 2016/03/30 01:41:25 sthen Exp $
+
+		server:
+		        # listening/incoming interfaces
+		        interface: lo0
+		        interface: 10.1.1.1
+		        #interface: 127.0.0.1@5353      # listen on alternative port
+		        #interface: ::1
+		        do-ip6: no
+
+		        # override the default "any" address to send queries; if multiple
+		        # addresses are available, they are used randomly to counter spoofing
+		        #
+		        # Since to egress interface is dynamic and there is no easy way for unbound to recognize changes,
+		        # leave this as default
+		        #outgoing-interface: 2001:db8::53
+
+		        cache-max-ttl: 14400
+		        cache-min-ttl: 900
+		        minimal-responses: yes
+		        prefetch: yes
+		        rrset-roundrobin: yes
+		        use-caps-for-id: yes
+		        verbosity: 1
+		        #verbosity: 5
+		        #use-syslog: yes
+		        logfile: /var/log/unbound.log
+		        log-queries: yes
+		        log-replies: yes
+		        log-tag-queryreply: yes
+		        log-servfail: yes
+
+		 access-control: 0.0.0.0/0 refuse
+		        access-control: 127.0.0.0/8 allow
+		        access-control: 10.1.1.0/24 allow
+		        access-control: ::0/0 refuse
+		        #access-control: ::1 allow
+
+		        # Dpwnload root hints from https://www.iana.org/domains/root/files and add to /var/unbound/etc/
+		        root-hints: "/var/unbound/etc/named.cache"
+
+		        hide-identity: yes
+		        hide-version: yes
+
+		        # Uncomment to enable qname minimisation.
+		        # https://tools.ietf.org/html/draft-ietf-dnsop-qname-minimisation-08
+		        #
+		        qname-minimisation: yes
+
+		        # Uncomment to enable DND over TLS (along with changing forward-addr'd)
+		        #
+		        tls-upstream: yes
+		        tls-cert-bundle: "/etc/ssl/cert.pem"
+
+		        # Uncomment to enable DNSSEC validation.
+		        #
+		        #auto-trust-anchor-file: "/var/unbound/db/root.key"
+
+		        # Enforce privacy of these addresses. Strips them away from answers.  It may
+		        # cause DNSSEC validation to additionally mark it as bogus.  Protects against
+		        # 'DNS Rebinding' (uses browser as network proxy).  Only 'private-domain' and
+		        # 'local-data' names are allowed to have these private addresses. No default.
+
+				private-address: 10.1.1.0/24
+
+
+		        # Serve zones authoritatively from Unbound to resolver clients.
+		        # Not for external service.
+		        #
+		        #local-zone: "local." static
+		        #local-data: "mycomputer.local. IN A 192.0.2.51"
+		        #local-zone: "2.0.192.in-addr.arpa." static
+		        #local-data-ptr: "192.0.2.51 mycomputer.local"
+
+		        local-zone: "1.1.10.in-addr.arpa" static
+
+		        # local. (mDNS/Bonjour) zone
+		        #local-zone: "local." static
+		        #local-data: "Time\ Capsule.local. IN A 10.1.1.5"
+
+		        # example.network
+		        local-zone: "example.network." transparent
+		        local-data: "vault.example.network. IN A 10.1.1.1"
+		        local-data: "dns1.example.network. IN A 10.1.1.1"
+		        local-data: "dns2.example.network. IN A 10.1.1.53"
+		        
+		        local-data-ptr: "10.1.1.1 vault.example.network"
+		        local-data-ptr: "10.1.1.1 dns1.example.network"
+		        local-data-ptr: "10.1.1.53 dns2.example.network"
+
+		        # Use TCP for "forward-zone" requests. Useful if you are making
+		        # DNS requests over an SSH port forwarding.
+		        #
+		        tcp-upstream: yes
+
+		        # DNS64 options, synthesizes AAAA records for hosts that don't have
+		        # them. For use with NAT64 (PF "af-to").
+		        #
+		        #module-config: "dns64 validator iterator"
+		        #dns64-prefix: 64:ff9b::/96     # well-known prefix (default)
+		        #dns64-synthall: no
+
+		        # Required modules for RPZ
+		        module-config: "respip validator iterator"
+
+		rpz:
+		        # Here, you can use a whitlist to allow FDQNs which might appear on blocklists below
+		        # For example, the DOH blocklist below includes many Apple servers without which your
+		        # iDevices will not work.
+		        name: "rpz-whitelist"
+		        zonefile: /var/unbound/db/whitelist.rpz
+		        rpz-action-override: passthru
+		        rpz-log: yes
+		        rpz-log-name: "rpz-whitelist"
+
+		rpz:
+		        # This is the blocklist generated by unbound-adblock
+		        name: "unbound-adblock"
+		        zonefile: "/var/unbound/db/adblock.rpz"
+		        rpz-log: yes
+		        rpz-log-name: "unbound-adblock"
+
+		rpz:
+		        # This is an example of how to include other blocklists in rpz format
+		        # If the rpz file contains TTL and SOA statements, it will be reloaded
+		        # from the url when it expires/
+		        name: "doh-block"
+		        zonefile: /var/unbound/db/DOH.rpz
+		        url: https://raw.githubusercontent.com/jpgpi250/piholemanual/master/DOH.rpz
+		        rpz-action-override: nxdomain
+		        rpz-log: yes
+		        rpz-log-name: "doh-block"
+
+		# Set this up according to these instructions:
+		# https://unbound.docs.nlnetlabs.nl/en/latest/getting-started/configuration.html#set-up-remote-control
+		remote-control:
+		        control-enable: yes
+		        control-use-cert: no
+		        control-interface: 127.0.0.1
+		        #Previous config
+		        #control-interface: /var/run/unbound.sock
+
+		# Use an upstream forwarder (recursive resolver) for specific zones.
+		# Example addresses given below are public resolvers valid as of 2014/03.
+
+		forward-zone:
+		        name: "."                               # use for ALL queries
+		#       forward-first: yes                      # try direct if forwarder fails
+
+		# For DNS over TLS
+		        forward-tls-upstream: yes
+		        forward-addr: 1.1.1.1@853
+		        forward-addr: 1.0.0.1@853
+		        forward-addr: 149.112.112.112@853
+		        forward-addr: 9.9.9.9@853
+
+		# For standard unencrypted DNS
+		#       forward-addr: 176.103.130.130 #AdGuard DNS
+		#       forward-addr: 176.103.130.131 #Adguard DNS
+		#       forward-addr: 1.1.1.1        # Cloudflare
+		#       forward-addr: 1.0.0.1        # Cloudflare
+		#       forward-addr: 23.253.163.53  # AlternateDNS
+		#       forward-addr: 198.100.242.72 # AlternateDNS
+		#       forward-addr: 9.9.9.9        # Quad9
+
+	Create log files:
+		doas touch /var/log/unbound.log
+		doas chown root:wheel /var/log/unbound.log
+		doas chmod 640 /var/log/unbound.log
+
+	Configure newsyslog.conf:
+		/var/log/dhcpd.log                      640  4     250  *     Z
+
+	Now:
+		doas rcctl enable unbound
+		doas rcctl start unbound
+
+11. DNS: Install adblocking with unbound-adblock (https://geoghegan.ca/unbound-adblock.html)
+
+12. pf-badhost et al.
+	For the internet facing devices, blocking by ip addresses of potentially nefarious hosts is done. Pf-badhost (https://geoghegan.ca/pfbadhost.html) is used along with blocking 'blackhats' and 'cumulative_persistent_threats' which are local blocklists created by scraping the http and relayd logs.
+
+13. More extensive pf configuration according to your network.
+
+		#       $OpenBSD: pf.conf
+		#
+
+		## Macros
+		lan = "10.1.1.0/24"
+		lan_if = "igc1"
+		dhcp_clients = "10.1.1.100-10.1.1.199"
+		icmp4_types = "{ echoreq, unreach, timex, paramprob }"
+		bgw = "192.168.1.254"
+
+		# Wireguard vpn
+		vpn_if="wg0"
+		vpn_port="21266"
+		wg_lan="10.10.10.0/30"
+
+		# Tables
+		table <pfbadhost> persist file "/etc/pf-badhost.txt"
+		table <martians> persist file "/etc/martians.txt"
+		table <blackhats> persist file "/etc/blackhats.py.txt"
+		table <persistent_threats> persist file "/etc/cumulative_persistent_threats"
+
+		## General
+
+		# Increase state table due to pf-badhost, etc.
+		set limit table-entries 1000000
+
+		# Log egress traffic
+		set loginterface egress
+
+		# Default: close firewall conpletely except as allowed below
+		set block-policy drop
+		block all
+
+		# Security settings
+		block in quick from urpf-failed
+		block in quick from no-route
+
+		# By default, do not permit remote connections to X11
+		block return in on ! lo0 proto tcp to port 6000:6010
+
+		# Port build user does not need network
+		block return out log proto {tcp udp} user _pbuild
+
+
+		## Rules for localhost
+		set skip on lo
+
+
+		## Rules for external interface
+		## Inbound
+		#Block traffc from various lists
+		block in quick on egress from <pfbadhost>
+		block in on egress from <martians>
+		block in quick on egress from <blackhats>
+		block in quick on egress from <persistent_threats>
+
+		# Allow rate-limited icmp4 traffic
+		pass in on egress inet proto icmp from any to egress icmp-type $icmp4_types max-pkt-rate 10/1
+
+		## Outbound
+		# Block traffic to suspect ip addresses
+		block out quick on egress to <pfbadhost>
+		block out on egress to <martians>
+		block out quick on egress to <blackhats>
+		block out quick on egress to <persistent_threats>
+
+		# Pass and NAT outbound traffic from lan
+		pass out on egress inet from $lan to !$lan nat-to (egress:0)
+
+		#Pass out traffic from router to BGW
+		pass out on egress inet from egress to $bgw
+
+		#Pass out traffic from router
+		pass out on egress inet from egress to !$lan
+
+
+        ## Rules for wireguard interface
+		pass in inet proto udp from any to any port 21266
+		pass on wg0
+		pass out on egress inet from (wg0:network) nat-to (egress:0)
+
+		## Rules for lan interface
+		# Pass lan traffic on lan_if
+		pass out on $lan_if inet to $lan
+		pass in on $lan_if inet from $lan
+
+		
+14. ntpd.conf
+	Each router is set up as a local ntpd server which is also advertised by dhcpd, as above.
+
+		# $OpenBSD: ntpd.conf,v 1.16 2019/11/06 19:04:12 deraadt Exp $
+		#
+		# See ntpd.conf(5) and /etc/examples/ntpd.conf
+		
+		query from 10.1.1.1
+		
+		servers pool.ntp.org
+		server time.cloudflare.com
+		sensor *
+		
+		constraint from "9.9.9.9"              # quad9 v4 without DNS
+		constraint from "2620:fe::fe"          # quad9 v6 without DNS
+		#constraints from "www.google.com"      # intentionally not 8.8.8.8
+		
+		listen on 10.1.1.1
+
+15. /altroot
+	Set up /altroot per FAQ if desired.
+
+16. wireguard:
+	This is a persistent point-to-point tunnel with OpenBSD firewall/routers at both ends.
+	
+	Server (wg0 10.10.10.2, internal lan 10.2.0.0/24):
+		Install wireguard-tools:
+			doas pkg_add wireguard-tools
+		Configure /etc/wireguard/wg0.conf:
+			[Interface]
+			# Private key of local server
+			PrivateKey = OKQXXXXXXXXXXXXXXXXXXXXXXXXX=
+			ListenPort = 21266
+			
+			# Client
+			[Peer]
+			# Public key of client
+			PublicKey = +MIXXXXXXXXXXXXXXXXXXXXXXXXXX=
+			
+			# IP addresss of client
+			Endpoint = XXX.XXX.XXX.XXX:21266
+			# or can use a FDQN
+			# Endpoint = server.example.network
+			
+			# IP addresses of local wg interfaces and ip range client's network for vpn traffic
+			AllowedIPs = 10.10.10.0/30,10.1.1.0/24
+			# Note: use lan of peer network if you want to access any host in peer network;
+			# if you only want to access firewall/router/endpoint,use 10.1.1.1.
+			
+			# Keep alive
+			PersistentKeepalive = 25
+
+		Configure /etc/hostname.wg0:
+			inet 10.10.10.1 255.255.255.252
+			up
+			!/usr/local/bin/wg setconf wg0 /etc/wireguard/wg0.conf
+			!route add -net 10.1.1.0/24 10.10.10.2
+			
+		Add to pf.conf:
+		
+			# Wireguard vpn
+			vpn_if="wg0"
+			vpn_port="21266"
+			
+			## Rules for wireguard
+			pass on wg0
+			pass in inet proto udp from any to any port 21266
+			pass out on egress inet from (wg0:network) nat-to (egress:0)
+	
+	Client (wgO 10.10.10.2, internal lan 10.1.1.1/24):
+		First install wireguard-tools:
+			doas pkg_add wireguard-tools
+		Configure wg0.conf
+			mkdir /etc/wireguard
+			nano /etc/wireguard/wg0.conf
+			
+			[Interface]
+			# PrivateKey for local wg client
+			PrivateKey = aATXXXXXXXXXXXXXXXXXXXXXXXXXXXX=
+			ListenPort=21266
+			
+			# Client
+			[Peer]
+			# Public key for server
+			PublicKey = jxtXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=
+			
+			# IP addresss of server
+			Endpoint = XXX.XXX.XXX.XXX:21266
+			# or can use a FDQN
+			# Endpoint = client.example.network
+			
+			# IP addresses of local wg interfaces and ip range of server's network for vpn traffic
+			AllowedIPs = 10.10.10.0/30,10.2.0.0/24
+			# Note: use lan of peer network if you want to access any host in peer network;
+			# if you only want to access firewall/router/endpoint,use 10.12.66.1.
+			
+			# Keep alive
+			PersistentKeepalive = 25
+
+		Configure wg0:
+			nano /etc/hostname.wg0
+			
+			inet 10.10.10.2 255.255.255.252
+			up
+			!/usr/local/bin/wg setconf wg0 /etc/wireguard/wg0.conf
+			!route add -net 10.12.66.0/24 10.10.10.1
+			
+		Add to pf.conf:
+		
+			# Wireguard vpn
+			vpn_if="wg0"
+			vpn_port="21266"
+			
+			# WireGuard
+			pass on $vpn_if
+			pass in inet proto udp from any to any port $vpn_port
+			pass out on egress inet from ($vpn_if:network) nat-to (egress:0)
+					
+17. ddclient.conf
+	You can use ddclient to set the ip address of a FQDN and then use that in wg0.conf to maintain the wireguard tunnel even if the ip addresses assigned by you ISP change:
+	
+		Create a DNS record on your provider for client.example.network. Here, I am using Cloudflare:
+	
+		# ddclient.conf
+		
+		daemon=10800                            # check every 10800 seconds (3 hr)
+		syslog=yes                              # log update msgs to syslog
+		mail=admin_user                             # mail all msgs to admin
+		mail-failure=admin_user                     # mail failed update msgs to admin
+		pid=/var/run/ddclient/ddclient.pid      # record PID in file.
+		ssl=yes                                 # use ssl-support.  Works with
+		                                        # ssl-library
+		# postscript=script                     # run script after updating.  The
+		                                        # new IP is added as argument.
+		
+		##
+		## Find current ip address of external interface
+		## using if
+		
+		use=if, if=em0
+		
+		##
+		## Change ip address for example.network and client.example.network
+		## at CloudFlare (www.cloudflare.com).
+		## This works but is less secure as it uses global API key.
+		## However, ddclient 3.9.1 is the package for OpenBSD which seems only to support
+		## global key. To use a more secure token with only Zone-DNS-Edit and
+		## Zone-Zone-Read permissions you need to download the source, compile and install
+		## a more up-to-date release.
+		##
+		
+		protocol=cloudflare, \
+		zone=example.network, \
+		ttl=1, \
+		login=yournamw@email.com, \
+		password=676XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX1122cc \
+		example.network 
+		client.example.network
+		
+	For the server, create a subdomain on your Cloudflare DNS records and
+	use a similar ddclient.conf with a different last line
+	
+		server.example.network
+		
+18. newsyslog.conf
+	As noted above, remember to add these:
+		
+		/var/log/unbound.log                    640  7     250  *     Z
+		/var/log/dhcpd.log                      640  4     250  *     Z
+		/var/log/unbound-adblock/unbound-adblock.log    _adblock:wheel  640  1     250  *     Z
+		
+19. syslog.conf:
+	Insert a similar stanza at the top of syslog.conf to divert logging of a process from syslog to a specific process log. To do this for unbound and dhcpd (above):
+	
+		# Divert unbound logs to /var/log/unbound.log
+		!!unbound
+		*.*                                       /var/log/unbound.log
+		!*
+		#
+	If you set up unbound to log to unbound.log in unbound.conf as described above, this change is not needed.
+
+20. Setting up mail alerts for admin user:
+	Edit /etc/mail/aliases
+		vi /etc/mail/aliases
+	Under 'Well-known alaises'
+		# Well-known aliases -- these should be filled in!
+		root: second_user
+		manager: root
+		dumper: root
+
+	Afterward. remember to run 'doas newalaises'
+
+
+Note A: Considerations for OpenBSD partition sizes:
+	It's fine to use the suggested partition/disklabels as a starting point, but
+	1. If the systemt will be used for more that 6 months and be upgraded to new releases as they appear, you need at least 1.1G free in /usr. Comsider bumping /usr up several GB.
+	2. If you plan to install significant amounts of software outside of the base system, consider a separate /usr/local.
+	3. If you don't plan to build custom kernels or from the ports tree, /usr/src and /usr/obj can be small or even eliminated and this space re-allocated to /usr
+	4. Consider the V1410 which has 32GB on an eMMC chip. This could be used as /altroot. If so, the your base system (/, /etc/, /usr ,/tmp, /var, /usr/X11R6 and so on) would need to be limited to 32GB. That's still plenty. /home can be on a separate partition.
+	5. You can leave free space at the end of the disklabels which can be later used to add new mount points (like /usr/local, /var/log, etc) or to expand /home.
+
+
+Note B: Setting up serial port/com:
+	FW4B and related:
+		Edit /etc/ttys to include:
+			console "/usr/libexec/getty std.115200" vt220 on secure
+		Edit /etc/boot.conf:
+			set tty com0
+			stty com0 115200
+		Connect com RJ45 to DB9 cable [and, depending on your computer, to null modem cable (optional) and DB9 to USB-A cable].
+		Command to connect in terminal session:
+		    sudo cu -l /dev/cu.usbserial-A507G86A  -s 115200
+		    Actual line will vary; query with 'ls -al /dev | grep usb'
+		Reboot and you should see the output of the bootloader and the OpenBSD boot.
+		Login as 'root' with the root password
+		Command to disconnect:
+			'~.'
+			
+	V1410 and related:
+		Edit /etc/ttys to include:
+			tty00 "/usr/libexec/getty std.115200" vt220 on secure
+		Edit /etc/boot.conf:
+			set tty com0
+			stty com0 115200
+		Connect USB-C to USB-A serial cable
+		Command to connect:
+			screen /dev/tty.usbserial-FT5GE3UP 115200
+			Actual line will vary; query with 'ls -al /dev | grep usb'
+			(Note - cu doesn't work for some reason)
+		Reboot and you should see the output of the bootloader and the OpenBSD boot.
+		Login as 'root' with the root password
+		Command to disconnect and quit:
+			'CTRL-A' ':' then enter 'quit' or
+			'CTRL-A' 'D' 'D'.
+			(should usually avoid 'CTRL-A' 'CTRL-/') 
+			
