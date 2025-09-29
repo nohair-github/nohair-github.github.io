@@ -21,7 +21,7 @@ So, let's configure the M1 Mac Mini as a network server for Time Machine backups
 
 	c. Sharing Users: Create another user to access the shared folders and volumes. You can use the MacOS Syetem Settings > Users and Groups to add a Sharing User but this has been associated with problems with Windows computers being able to use shares (see https://apple.stackexchange.com/questions/469442/unable-to-select-sharing-only-user-when-setting-up-file-sharing).
 
-	I prefer to do it manually which does work with Windows ime:
+	An alternative if the MacOS Sharing User setup doesn't work for your Win hosts is to set it up manually which does work with Windows ime:
 
 		sudo dscl . -create /Users/tmuser
 		sudo dscl . -create /Users/tmuser RealName "TM_Server_User" (You should use another name)

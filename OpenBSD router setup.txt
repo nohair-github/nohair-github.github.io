@@ -45,9 +45,9 @@ internet <-> [Router/firewall] <-> switch __ wifi access point
 		vi /etc/group
 		Change 'wheel:*:0:root' to 'wheel:*:0:root,second_user'
 
-	Or:
+	Or (perhaps better):
 		
-	b. Add second user to doas.conf:
+	b. Simply add admin permissions to second user in doas.conf:
 		# Allow wheel by default
 		permit keepenv :wheel as root
 		
