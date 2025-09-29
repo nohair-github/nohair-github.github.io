@@ -21,7 +21,7 @@ So, let's configure the M1 Mac Mini as a network server for Time Machine backups
 
 	c. Sharing Users: Create another user to access the shared folders and volumes. You can use the MacOS Syetem Settings > Users and Groups to add a Sharing User but this has been associated with problems with Windows computers being able to use shares (see https://apple.stackexchange.com/questions/469442/unable-to-select-sharing-only-user-when-setting-up-file-sharing).
 
-	I prefer to do it manually in the BSD way which does work with Windows ime:
+	I prefer to do it manually which does work with Windows ime:
 
 		sudo dscl . -create /Users/tmuser
 		sudo dscl . -create /Users/tmuser RealName "TM_Server_User" (You should use another name)
@@ -70,7 +70,7 @@ So, let's configure the M1 Mac Mini as a network server for Time Machine backups
 8. Set up not to go to a lock screen:
 	System Settings >> Lock Screen >> Require Password after Screen saver begins or screen is turned off > set to 'Never'
 
-9. Fix headless video issues with dummy HDMI plug or software (BetterDisplay): On my M1 Mac Mini, I seemed to have no problems running it headless. In that case, the resolution was set to 1920x1080 with no other options displayed. THe slow response, choppy graphics, and so on reported on the web were not seen (but, then. I am no playing games or streaming video over the vnd connection). I then used a NewerTech dummy HDMI plug and I noticed no difference except other resolutions were visible in System Settings.
+9. Fix headless video issues with dummy HDMI plug or software (BetterDisplay): On my M1 Mac Mini, I seemed to have no problems running it headless. In that case, the resolution was set to 1920x1080 with no other options displayed. The slow response, choppy graphics, and so on reported on the web were not seen (but, then. I am not playing games or streaming video over the vnc connection). I then used a NewerTech dummy HDMI plug and I noticed no difference except other resolutions were visible in System Settings.
 
 10. Prevent the Mac from sleeping:
 	caffeinate: This disables sleep as log as a process ('assertion') is running. You can find the PID of the login window and prevent sleep as long as the user is logged in with:
@@ -91,7 +91,7 @@ So, let's configure the M1 Mac Mini as a network server for Time Machine backups
 			Set shares to be shared as SMB.
 		    Select the backup Volume.
 		    Under 'Advanced Settings', set the share to be used as a Time Machine backup 
-			Set 'Read and Write' permissions for appropriate TM_Server_User or other user you created above.
+			Set 'Read and Write' permissions for appropriate TM_Server_User or other sharing user you created above.
 			You can also give 'Read and Write' permissions to the server's Staff group as is done by default, but this is not necessary.
 			Set 'Everyone' to have 'No Access'
 		Connect execute first backup:

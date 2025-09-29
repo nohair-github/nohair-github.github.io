@@ -637,7 +637,7 @@ internet <-> [Router/firewall] <-> switch __ wifi access point
 
 Note A: Considerations for OpenBSD partition sizes:
 	It's fine to use the suggested partition/disklabels as a starting point, but
-	1. If the systemt will be used for more that 6 months and be upgraded to new releases as they appear, you need at least 1.1G free in /usr. Comsider bumping /usr up several GB.
+	1. If the system will be used for more that 6 months and be upgraded to new releases as they appear, you need at least 1.1G free in /usr. Comsider bumping /usr up several GB.
 	2. If you plan to install significant amounts of software outside of the base system, consider a separate /usr/local.
 	3. If you don't plan to build custom kernels or from the ports tree, /usr/src and /usr/obj can be small or even eliminated and this space re-allocated to /usr
 	4. Consider the V1410 which has 32GB on an eMMC chip. This could be used as /altroot. If so, the your base system (/, /etc/, /usr ,/tmp, /var, /usr/X11R6 and so on) would need to be limited to 32GB. That's still plenty. /home can be on a separate partition.
