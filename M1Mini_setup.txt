@@ -28,7 +28,7 @@ So, let's configure the M1 Mac Mini as a network server for Time Machine backups
 		sudo dscl . -create /Users/tmuser UserShell /usr/bin/false
 		sudo dscl . -create /Users/tmuser NFSHomeDirectory /var/empty
 
-		You can place this user in the staff group (GroupID 20). You could consider creating multiple sharing users as above to keep each remote user's TM backups separate. In this case, create groups 'sharinguser1' and so on and assign these.
+		You can place this user in the staff group (GroupID 20). You could consider creating multiple sharing users as above to keep each remote user's TM backups separate. In this case, create users 'tmuser1', 'tmuser2', etc. and groups 'tmuser1', 'tmuser2';, etc. and assign these to your various TM client machines.
 
 		sudo dscl . -create /Users/tmuser PrimaryGroupID 20
 		Or:
@@ -51,11 +51,12 @@ So, let's configure the M1 Mac Mini as a network server for Time Machine backups
 		Now, go to System Settings > Users and Groups and see that your new users are listed. Set a strong password for each new user.
 
 4. Set up network:
-	a. Turn off WiFi
+	a. Turn off WiFi.
 	b. Set wired interface IP address to a static one
 	c. Unset 'Automatically join this networK' in System Settings > WiFi
 	d. Delete (Forget) all saved networks
 	e. Set require administrator password to turn wifi on or change networks
+	f. MacOS has an unfortunate habit of turning the wifi back on randomly. You can set the System Settings to 'Require Administator to turn Wifi on' or to change networks. You can also delete any saved networks. But if you reboot the server, Wifi may be turned on again. Best here is to make a new Location. Duplicate 'Automatic' and rename it 'Wired' or something. Then, in this 'Wired' Location, you can make Wifi inactive or delete the wifi service altogether.
 	
 5. Set up remote access:
 	MacOS has 2 methods of remote access: Screen Sharing and Remote Wanagement, both found in the Sharing pane of System Settings and both are based on vnc.

@@ -9,7 +9,7 @@ internet <-> [Router/firewall] <-> switch __ wifi access point
 1. Install OpenBSD with GPT disks and UEFI boot
 	a. Download install77.img and copy to USB drive using dd: dd if=~/Downloads/install77.img of=/dev/sd2 BS=1M
 	b. Boot Vault into installer on USB drive. For, a step-by-step walk-through, see https://www.openbsdhandbook.com/installation/. It's a bit dated but is still mostly correct.
-	c. Choose shell (S) from installer first. At this time the main HD will be sd0 and the USB sd1 (Vault FW4B and similar) or the main disk will be sd0, the eMMC sd1, and the USB sd2 (Vault V1410 and similar). You can check with 'dmesg' or 'sysctl hw.disknames'.
+	c. First, do not choose '(I)nstall'; choose (S)shell. At this time the main HD will be sd0 and the USB sd1 (Vault FW4B and similar) or the main disk will be sd0, the eMMC sd1, and the USB sd2 (Vault V1410 and similar). You can check with 'dmesg' or 'sysctl hw.disknames'.
 	d. Create an GPT disk with a new (EFI) partition:
 		fdisk -i -g -b 960 sd0
 	e. Now enter "install" to start installer.
@@ -18,8 +18,8 @@ internet <-> [Router/firewall] <-> switch __ wifi access point
 		'inet 10.1.1.1 255.255.255.0 10.1.1.255'
 	h. When you get to the point where you are asked if you want to configure an addition user, do so. This will be your admin user after you disable root logins.
 	i. In the next step where you are asked to allow root login on ssh, answer 'yes'. This is insecure but we will change this later. For now, it is useful after reboot for initial configuration.
-	j. When you get to the point where the installer asks which disk to use, you can list the available disks.  Usually you will choose sd0 and then choose '(O)penBSD' partition. You can use the suggested disklabel or create a custom one (See Note A below) but don't touch slice 'i'.
-	k. When you get to the reboot question at the end, don't reboot. Select (S)hell again. Here, we install the boot loader on the EFI partition:
+	j. When you get to the point where the installer asks which disk to use, you can list the available disks.  Usually you will choose sd0 and then choose '(O)penBSD' partition. You can use the suggested disklabel or create a custom one (See Note A below) but don't touch slice 'i' - that's your EFI partition.
+	k. When you get to the reboot question at the end, don't reboot. Select (S)hell again. Here, we install the bootloader on the EFI partition:
 		Check where and which partitions are mounted.
 			mount
 		(Usually sd0a will be on /mnt and sd0i will need to be mounted on /mnt2)
@@ -28,7 +28,7 @@ internet <-> [Router/firewall] <-> switch __ wifi access point
 			mkdir /mnt2
 			mount /dev/sd0i /mnt2
 			mkdir -p /mnt2/efi/boot
-			cp /mnt/usr/mdec/BOOTX64.EFI /mnt2/efi/boot
+			cp /mnt/usr/mdec/BOOTX64.EFI /mnt2/efi/boot/
 		Now reboot then ssh back into new OpenBSD install as root for further configuration.
 	
 	References:
@@ -62,7 +62,7 @@ internet <-> [Router/firewall] <-> switch __ wifi access point
 	   Once logged in:
 	   	doas less /etc/pf.conf
 	
-4. SSHD: If you confirm you can log in as a non-root user 
+4. SSH with private keys: If you confirm you can log in as a non-root user
 	
 	a. Create ssh key on your computer you use to log into the Vault:
 		ssh-keygen -t ed25519 -C "your_email@example.com" (preferred)
@@ -424,17 +424,22 @@ internet <-> [Router/firewall] <-> switch __ wifi access point
 		# Pass and NAT outbound traffic from lan
 		pass out on egress inet from $lan to !$lan nat-to (egress:0)
 
-		#Pass out traffic from router to BGW
-		pass out on egress inet from egress to $bgw
-
 		#Pass out traffic from router
 		pass out on egress inet from egress to !$lan
 
+		# But block trafic to unroutable ips
+		block out on egress to <martians>
+
+		#Pass out traffic to BGW
+		pass out on egress inet from egress to $bgw
+		pass out on egress inet from $lan to $bgw
+		
 
         ## Rules for wireguard interface
 		pass in inet proto udp from any to any port 21266
 		pass on wg0
 		pass out on egress inet from (wg0:network) nat-to (egress:0)
+
 
 		## Rules for lan interface
 		# Pass lan traffic on lan_if
@@ -640,7 +645,7 @@ Note A: Considerations for OpenBSD partition sizes:
 	1. If the system will be used for more that 6 months and be upgraded to new releases as they appear, you need at least 1.1G free in /usr. Comsider bumping /usr up several GB.
 	2. If you plan to install significant amounts of software outside of the base system, consider a separate /usr/local.
 	3. If you don't plan to build custom kernels or from the ports tree, /usr/src and /usr/obj can be small or even eliminated and this space re-allocated to /usr
-	4. Consider the V1410 which has 32GB on an eMMC chip. This could be used as /altroot. If so, the your base system (/, /etc/, /usr ,/tmp, /var, /usr/X11R6 and so on) would need to be limited to 32GB. That's still plenty. /home can be on a separate partition.
+	4. Consider the V1410 which has 32GB on an eMMC chip. This could be used as /altroot. If so, the your base system (/, /etc, /usr, /tmp, /var, /usr/X11R6 and so on, excluding /home, /opt, /usr/local, etc.) would need to be limited to 32GB. That's still plenty. /home and other partitions can be on a separate partition.
 	5. You can leave free space at the end of the disklabels which can be later used to add new mount points (like /usr/local, /var/log, etc) or to expand /home.
 
 
