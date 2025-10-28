@@ -29,7 +29,8 @@ internet <-> [Router/firewall] <-> switch __ wifi access point
 			mount /dev/sd0i /mnt2
 			mkdir -p /mnt2/efi/boot
 			cp /mnt/usr/mdec/BOOTX64.EFI /mnt2/efi/boot/
-		Now reboot then ssh back into new OpenBSD install as root for further configuration.
+
+	Now reboot then ssh back into new OpenBSD install as root for further configuration.
 	
 	References:
 	https://www.openbsdhandbook.com/installation/
@@ -37,9 +38,9 @@ internet <-> [Router/firewall] <-> switch __ wifi access point
 	https://jasper.la/posts/openbsd-uefi-bootloader-howto/
 	https://kb.protectli.com/kb/how-to-install-openbsd-on-the-vault-2/
 
-2. *** Now log in as root and set up serial console access (see Note B at end of this document). Do not proceed until that is working. ***
+2. *** Now log in as root and set up serial console access (see Note B at end of this document). Do not proceed until that is working! ***
 	
-3. Adjust user permissions: If you configured a second user during install, you need to configure that (non-root admin) user to have root privileges as needed. If not, time to create the second (admin) user. Then:
+3. Adjust user permissions: If you configured a second user during install, you need to configure that (non-root admin) user to have root privileges as needed. If not, create the second user. Then:
 
 	a. Add second user to wheel group
 		vi /etc/group
@@ -62,7 +63,7 @@ internet <-> [Router/firewall] <-> switch __ wifi access point
 	   Once logged in:
 	   	doas less /etc/pf.conf
 	
-4. SSH with private keys: If you confirm you can log in as a non-root user
+4. SSH with private keys: After you confirm you can log in as a non-root user
 	
 	a. Create ssh key on your computer you use to log into the Vault:
 		ssh-keygen -t ed25519 -C "your_email@example.com" (preferred)
@@ -82,6 +83,7 @@ internet <-> [Router/firewall] <-> switch __ wifi access point
 	d. Now test by logging out and logging in to see if you are prompted for the passphrase of your key.
 	
 	e. If you're sure it's working, insert the following lines to /etc/ssh/sshd_config below the default entries. This will lock the root out from ssh and lock you out as well if private key authentication is not working. In that case, I hope you got serial console access working; otherwise, time to re-install from sratch.
+	
 		ListenAddress 10.1.1.1
 		PermitRootLogin no
 		PasswordAuthentication no
@@ -494,7 +496,7 @@ internet <-> [Router/firewall] <-> switch __ wifi access point
 			# IP addresses of local wg interfaces and ip range client's network for vpn traffic
 			AllowedIPs = 10.10.10.0/30,10.1.1.0/24
 			# Note: use lan of peer network if you want to access any host in peer network;
-			# if you only want to access firewall/router/endpoint,use 10.1.1.1.
+			# if you only want to access firewall/router/endpoint,use 10.1.1.1/24.
 			
 			# Keep alive
 			PersistentKeepalive = 25
@@ -541,8 +543,8 @@ internet <-> [Router/firewall] <-> switch __ wifi access point
 			# IP addresses of local wg interfaces and ip range of server's network for vpn traffic
 			AllowedIPs = 10.10.10.0/30,10.2.0.0/24
 			# Note: use lan of peer network if you want to access any host in peer network;
-			# if you only want to access firewall/router/endpoint,use 10.12.66.1.
-			
+			# if you only want to access firewall/router/endpoint,use 10.2.0.1.
+		
 			# Keep alive
 			PersistentKeepalive = 25
 
@@ -552,7 +554,7 @@ internet <-> [Router/firewall] <-> switch __ wifi access point
 			inet 10.10.10.2 255.255.255.252
 			up
 			!/usr/local/bin/wg setconf wg0 /etc/wireguard/wg0.conf
-			!route add -net 10.12.66.0/24 10.10.10.1
+			!route add -net 10.2.0.0/24 10.10.10.1
 			
 		Add to pf.conf:
 		
@@ -645,8 +647,8 @@ Note A: Considerations for OpenBSD partition sizes:
 	1. If the system will be used for more that 6 months and be upgraded to new releases as they appear, you need at least 1.1G free in /usr. Comsider bumping /usr up several GB.
 	2. If you plan to install significant amounts of software outside of the base system, consider a separate /usr/local.
 	3. If you don't plan to build custom kernels or from the ports tree, /usr/src and /usr/obj can be small or even eliminated and this space re-allocated to /usr
-	4. Consider the V1410 which has 32GB on an eMMC chip. This could be used as /altroot. If so, the your base system (/, /etc, /usr, /tmp, /var, /usr/X11R6 and so on, excluding /home, /opt, /usr/local, etc.) would need to be limited to 32GB. That's still plenty. /home and other partitions can be on a separate partition.
-	5. You can leave free space at the end of the disklabels which can be later used to add new mount points (like /usr/local, /var/log, etc) or to expand /home.
+	4. Consider the V1410 which has 32GB on an eMMC chip. This could be used as /altroot. If so, then your base system (/, /etc, /usr, /tmp, /var, /usr/X11R6 and so on, excluding /home, /opt, /usr/local, etc.) would need to be limited to 32GB. That's still plenty. /home and other partitions can be on a separate partition.
+	5. You can leave free space at the end of the disklabels which can be later used to add new mount points (like /usr/local, /var/log, /opt, etc.) or to expand /home.
 
 
 Note B: Setting up serial port/com:
