@@ -59,7 +59,7 @@ internet <-> [Router/firewall] <-> switch __ wifi access point
 		permit persist keepenv second_user as root
 		
 	c. Now log out of your ssh session and re-login as second_user to check if you have access and that you can use doas to escalate privileges as needed.
-		ssh -l second_user
+		ssh -l second_user 10.1.1.1
 	   Once logged in:
 	   	doas less /etc/pf.conf
 	
@@ -85,8 +85,8 @@ internet <-> [Router/firewall] <-> switch __ wifi access point
 	e. If you're sure it's working, insert the following lines to /etc/ssh/sshd_config below the default entries. This will lock the root out from ssh and lock you out as well if private key authentication is not working. In that case, I hope you got serial console access working; otherwise, time to re-install from sratch.
 	
 		ListenAddress 10.1.1.1
-		PermitRootLogin no
-		PasswordAuthentication no
+		PermitRootLogin no (this locks out root login)
+		PasswordAuthentication no (this allows only public/private key logins)
 		PubkeyAuthentication yes
 		
 	f. Restart sshd
@@ -171,7 +171,7 @@ internet <-> [Router/firewall] <-> switch __ wifi access point
 	Unbound is configured as a caching and forwarding DNS server which is configured to communicate with 
 	the forwarders over DOT.
 
-	/var/unbound/etc/unbound.conf:
+	Example working /var/unbound/etc/unbound.conf: (Edit for your use)
 
 		# $OpenBSD: unbound.conf,v 1.7 2016/03/30 01:41:25 sthen Exp $
 
@@ -222,7 +222,7 @@ internet <-> [Router/firewall] <-> switch __ wifi access point
 		        #
 		        qname-minimisation: yes
 
-		        # Uncomment to enable DND over TLS (along with changing forward-addr'd)
+		        # Uncomment to enable DNS over TLS (along with changing forward-addr'd)
 		        #
 		        tls-upstream: yes
 		        tls-cert-bundle: "/etc/ssl/cert.pem"
