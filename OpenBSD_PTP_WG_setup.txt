@@ -4,7 +4,7 @@ This is a persistent point-to-point tunnel with OpenBSD firewall/routers at both
 
 The topology of the network:
 
-Internet <-- em0--Router 1--wg0 <--> tunnel <--> wg0--Router2--igc0 --> Internet
+Network 1 hosts <-- em0--Router 1--wg0 <--> tunnel <--> wg0--Router2--igc0 --> network 2 hosts
 
 External if (em0, igc0): as assigned by ISP.
 
