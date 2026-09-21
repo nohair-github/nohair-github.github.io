@@ -1,0 +1,97 @@
+Taming the Roku
+
+Roku devices, like Roku TVs (TCL) and Roku streaming sticks, flood your home network with tracking and telemetry, not to mention traffic from other apps like netflix, Hulu, etc. that add on to the traffic. While (perhaps) not as intrusive or potentially nefarious as tha reported for LG Smart TVs, Roku devices still must be viewed as suspect devices given an entree to your network.
+
+1. Confine smart TVs and streaming devices to a vlan.
+Here you can cut off scanning your network for other smart devices. [This is ideal but I don't do this. Instead, as I have a small network and few LG devices (washer, dryer. dishwasher, refrigerator) and other "smart" devices which are configured to not connect wirelessly. My printer connects but it's traffic to the internet is blocked at the firewall.]
+
+2. Block side channel communication.
+LG TVs and others send packets to hard-coded DNS servers to bypass local DNS resolvers like pi-hole or unbound-adblock. Also, exfiltration of DNS requests and info including (perhaps) watch history, browsing history, location, ACR, and microphone recording to create a profile and personalize ads has been described using HTTPS (port 443 udp), NTP (port 123 udp), and DOT (port 853 tcp).
+
+This can be blocked using your router and firewall.
+a. Set you dhcp server to assign a fixed, known ip address to the suspect Roku (dhcp reservation) or confine to vlan with block on connection to other vlans.
+
+b. Configure your firewall to block and redirect these queries. In the case of pf:
+
+	# Block DOH and DOT from dhcpd clients
+	block return in quick on $lan_if proto udp from $dhcpd_clients to any port 443
+	block return in quick on $lan_if proto tcp from $dhcpd_clients to any port 853
+
+	# Redirect DNS requests from dhcpd clients to internal DNS servers
+	pass in on $lan_if inet proto { tcp udp } from $dhcpd_clients to !($lan_if:network) port domain \
+	  rdr-to $dns_svrs port domain round-robin sticky-address
+
+	# Redirect ntp traffic to local ntpd servers
+	pass in on $lan_if inet proto udp from $dhcpd_clients to !($lan_if:network) port 123 \
+	    rdr-to $ntp_svrs port 123 round-robin sticky-address
+
+c. Set up a local DNS resolver like unbound.
+
+    # Local zones for ad and telemetry blocking
+
+    local-zone: "logs.roku.com" always_nxdomain
+    local-zone: "ads.roku.com" always_nxdomain
+    local-zone: "ravm.tv" always_nxdomain
+
+    local-zone: "logs.netflix.com" always_nxdomain
+    local-zone: "ichnaea.netflix.com" always_nxdomain
+    local-zone: "customerevents.netflix.com" always_nxdomain
+    local-zone: "push.prod.netflix.com" always_nxdomain
+
+Using the local-zone instead of a block list more rapidly blocks the domain (a few ms) than a rpz lookup.
+
+3. Lists of domains identified by tcpdump used by RokuTV (TCL), Roku streaming stick, and Netflix app on Roku. Feel free to see which ones work or break the device/app streaming function.
+
+# Roku domains for possible block list:
+ads.roku.com
+*.ads.roku.com
+api.roku.com
+api.rokutime.com
+api.rpay.roku.com
+api2.sr.roku.com
+austin.sb.roku.com
+bif.sr.roku.com
+cloudservices.roku.com
+configsvc.cs.roku.com
+display.ravm.tv
+epgreg.sr.roku.com
+identity.ads.roku.com
+keysvc.cs.roku.com
+liberty.logs.roku.com
+logan.logs.roku.com
+logs.roku.com
+*.logs.roku.com
+navigation.sr.roku.com
+p.ads.roku.com
+ravm.tv
+*.ravm.tv
+roku.com
+*.sb.roku.com
+scribe.logs.roku.com
+*.sr.roku.com
+sw-update.cs.roku.com
+themes-service.sr.roku.com
+tis.cti.roku.com
+traces.sr.roku.com
+track.sr.roku.com
+
+# Netflix domains for possible block list.
+# Blocking secure, api-global, and appboot break Netflix
+#secure.netflix.com                   
+#api-global.netflix.com
+#appboot.netflix.com
+# Netflix playback fails on Humax DTR-T2100 (YouView) STB; needs testing on other TVs
+#nrdp.nccp.netflix.com
+ichnaea.netflix.com
+customerevents.netflix.com
+logs.netflix.com
+# Blocking nrdp.prod.ftl.netflix.com blocks login to Netflix if you log out.
+# (https://oisd.nl/excludes.php?w=nrdp.prod.ftl.netflix.com)
+#nrdp.prod.ftl.netflix.com
+push.prod.netflix.com
+
+4. References:
+https://fabricati-diem.inform.social/post/deshittification-as-a-service/
+https://blog.altos.au/post/desnitching-the-tv/
+https://github.com/blocklistproject/Lists
+LG-related: https://forum.level1techs.com/t/lg-tv-block-mini-how-to/255178
